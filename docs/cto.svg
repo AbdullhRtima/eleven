@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 680" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
+  <rect width="1000" height="680" fill="#0f172a"/>
+  <text x="500" y="44" text-anchor="middle" fill="#f8fafc" font-size="26" font-weight="700">What a CTO actually does</text>
+  <text x="500" y="70" text-anchor="middle" fill="#94a3b8" font-size="14">Turns business goals into technology that ships, and builds the team and system that keep shipping it</text>
+
+  <g stroke="#334155" stroke-width="2">
+    <line x1="500" y1="350" x2="190" y2="170"/><line x1="500" y1="350" x2="500" y2="150"/>
+    <line x1="500" y1="350" x2="810" y2="170"/><line x1="500" y1="350" x2="190" y2="520"/>
+    <line x1="500" y1="350" x2="500" y2="550"/><line x1="500" y1="350" x2="810" y2="520"/>
+  </g>
+
+  <circle cx="500" cy="350" r="78" fill="#6366f1"/>
+  <text x="500" y="345" text-anchor="middle" fill="#fff" font-size="30" font-weight="800">CTO</text>
+  <text x="500" y="370" text-anchor="middle" fill="#e0e7ff" font-size="13">decides · delegates · verifies</text>
+
+  <g font-size="13" fill="#cbd5e1">
+    <rect x="60" y="105" width="260" height="130" rx="12" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+    <text x="80" y="135" fill="#38bdf8" font-size="16" font-weight="700">1 · Vision &amp; strategy</text>
+    <text x="80" y="160">Tech roadmap tied to the business</text>
+    <text x="80" y="180">Build vs buy vs don't build</text>
+    <text x="80" y="200">Bets: what we will NOT do</text>
+
+    <rect x="370" y="95" width="260" height="110" rx="12" fill="#1e293b" stroke="#a78bfa" stroke-width="2"/>
+    <text x="390" y="125" fill="#a78bfa" font-size="16" font-weight="700">2 · Architecture</text>
+    <text x="390" y="150">Big, costly-to-reverse decisions</text>
+    <text x="390" y="170">Boring tech, clear boundaries</text>
+    <text x="390" y="190">Writes them down (ADRs)</text>
+
+    <rect x="680" y="105" width="260" height="130" rx="12" fill="#1e293b" stroke="#34d399" stroke-width="2"/>
+    <text x="700" y="135" fill="#34d399" font-size="16" font-weight="700">3 · People &amp; team</text>
+    <text x="700" y="160">Hire, grow, set the bar</text>
+    <text x="700" y="180">Right role on the right problem</text>
+    <text x="700" y="200">Culture: honest, written, calm</text>
+
+    <rect x="60" y="455" width="260" height="130" rx="12" fill="#1e293b" stroke="#fbbf24" stroke-width="2"/>
+    <text x="80" y="485" fill="#fbbf24" font-size="16" font-weight="700">4 · Delivery</text>
+    <text x="80" y="510">Small batches, ship often</text>
+    <text x="80" y="530">Unblock, cut scope, set the pace</text>
+    <text x="80" y="550">Measure lead time &amp; failures</text>
+
+    <rect x="370" y="500" width="260" height="110" rx="12" fill="#1e293b" stroke="#f87171" stroke-width="2"/>
+    <text x="390" y="530" fill="#f87171" font-size="16" font-weight="700">5 · Quality &amp; security</text>
+    <text x="390" y="555">Definition of done, tests, reviews</text>
+    <text x="390" y="575">Incidents, uptime, data safety</text>
+    <text x="390" y="595">Owns risk, not just features</text>
+
+    <rect x="680" y="455" width="260" height="130" rx="12" fill="#1e293b" stroke="#f472b6" stroke-width="2"/>
+    <text x="700" y="485" fill="#f472b6" font-size="16" font-weight="700">6 · Money &amp; stakeholders</text>
+    <text x="700" y="510">Cloud, tools &amp; AI spend</text>
+    <text x="700" y="530">Explains tech to CEO, board, users</text>
+    <text x="700" y="550">Says "no" with a reason</text>
+  </g>
+
+  <text x="500" y="652" text-anchor="middle" fill="#94a3b8" font-size="13">A CTO's week ≈ 30% decisions &amp; architecture · 30% people · 20% delivery &amp; quality · 20% stakeholders &amp; cost (rough guide; it varies with company size)</text>
+</svg>
