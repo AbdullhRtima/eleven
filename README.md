@@ -10,18 +10,38 @@ and a CTO who runs the loop.
 
 It lives in one folder, `eleven/`, at the project root, and it is invisible to git.
 
+Website: **[eleven.rtima.org](https://eleven.rtima.org)**
+
 ## Install into a project
 
+**macOS / Linux**
 ```bash
-~/code/lab/eleven/install.sh ~/code/my-project
+git clone https://github.com/AbdullhRtima/eleven.git ~/eleven
+~/eleven/install.sh ~/code/my-project
 ```
 
-This copies the kit to `my-project/eleven/` and adds `/eleven/` to
+**Windows (PowerShell)**
+```powershell
+git clone https://github.com/AbdullhRtima/eleven.git $HOME\eleven
+~\eleven\install.ps1 C:\code\my-project
+```
+If scripts are blocked, run `powershell -ExecutionPolicy Bypass -File $HOME\eleven\install.ps1 C:\code\my-project` instead.
+
+The installer copies the kit to `my-project/eleven/` and adds `/eleven/` to
 `.git/info/exclude`. That file is your local ignore list, so the project's
 `.gitignore` is untouched and nothing shows up in `git status`.
 
-To pull in kit improvements later, run `install.sh --update ~/code/my-project`.
+To pull in kit improvements later, run `git pull` in the kit, then
+`install.sh --update ~/code/my-project` (or `install.ps1 -Update …`).
 Your `project.md`, `work/` and `decisions/` are never touched.
+
+## Watch it work
+
+Open **[eleven.rtima.org/app](https://eleven.rtima.org/app/)**, or `eleven/ui/index.html`
+locally, in Chrome or Edge, then choose your project's `eleven` folder. You see each
+item's loop step, round budget, tasks, reports and a live activity feed, and
+anything that needs your answer is pulled to the top. The page reads the folder in
+your browser; nothing is uploaded. Firefox and Safari open a snapshot instead.
 
 ## Use it
 
@@ -48,9 +68,14 @@ agents/*.md       the 11 roles
 templates/        brief, plan, tasks, notes, report, decision, project
 work/<NNN>-slug/  one folder per item: the shared "ledger"
 decisions/        decision records that outlive an item
-docs/             the habits and research behind it, and the CTO role
-install.sh        install/update into another project
+docs/             the habits and research behind it, the CTO role, the roadmap
+ui/index.html     the live browser UI
+install.sh        install/update (macOS, Linux)
+install.ps1       install/update (Windows)
 ```
+
+The kit repo also holds `site/` (the landing page, deployed to GitHub Pages).
+See [docs/roadmap.md](docs/roadmap.md) for what's next.
 
 ## Why this works
 

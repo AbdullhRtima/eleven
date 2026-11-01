@@ -58,6 +58,10 @@ Copy the files from [templates/](templates/) to start one.
 
 Decisions that outlive an item go to `eleven/decisions/NNNN-<slug>.md` ([template](templates/decision.md)).
 
+Keep the template formats: the `Status:` line in the brief, the `Round: n / 10` line and
+the task table in `tasks.md`, and the `## Result` and `## Open questions` headings
+in reports. The live UI (`eleven/ui/index.html`) reads them.
+
 The size caps matter. A ledger that grows forever turns into noise and pushes out
 the context that counts. When a file hits its cap, compress it: keep what is
 true and still useful, and delete the rest.

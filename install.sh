@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Install eleven into a project as ./eleven, hidden from git via .git/info/exclude.
 #   ./install.sh [project_dir]            install; never overwrites existing files
-#   ./install.sh --update [project_dir]   also refresh AGENTS.md, agents/, templates/, docs/
+#   ./install.sh --update [project_dir]   also refresh AGENTS.md, agents/, templates/, docs/, ui/
 # The project's own files (project.md, work/, decisions/) are never overwritten.
 set -euo pipefail
 
@@ -18,7 +18,7 @@ if [[ "$dest" == "$kit" ]]; then
 fi
 
 mkdir -p "$dest/work" "$dest/decisions"
-for item in AGENTS.md README.md install.sh agents templates docs; do
+for item in AGENTS.md README.md install.sh install.ps1 agents templates docs ui; do
   if (( update )); then
     rm -rf "${dest:?}/$item"
     cp -R "$kit/$item" "$dest/"
@@ -41,3 +41,4 @@ echo "Installed eleven in $dest"
 echo
 echo "Start your agent in $project and say:"
 echo "  Read eleven/AGENTS.md and act as the CTO. Fill eleven/project.md from the codebase."
+echo "Watch it work: open eleven/ui/index.html in Chrome or Edge."

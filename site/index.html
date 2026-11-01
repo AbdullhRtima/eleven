@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>eleven · your AI, organised into a team</title>
+<meta name="description" content="Open-source Markdown kit that turns your coding agent into an 11-role software team: product, design, architecture, engineering, QA, DevOps, security and docs, led by a CTO. Works with Claude Code, Codex, opencode and Cursor.">
+<meta property="og:title" content="eleven · your AI, organised into a team">
+<meta property="og:description" content="Eleven roles. One loop. Shared files. Drop one folder into any project.">
+<meta property="og:image" content="https://eleven.rtima.org/assets/live-ui.png">
+<meta property="og:url" content="https://eleven.rtima.org/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236366f1'/%3E%3Ctext x='16' y='22' font-family='Arial' font-weight='700' font-size='15' fill='white' text-anchor='middle'%3E11%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #ffffff; --bg-2: #f8fafc; --panel: #ffffff; --border: #e2e8f0; --text: #0f172a; --muted: #64748b;
+  --accent: #6366f1; --accent-2: #8b5cf6; --accent-soft: #eef2ff; --code-bg: #0f172a; --code-text: #e2e8f0; --ok: #059669;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #070b16; --bg-2: #0b1020; --panel: #111827; --border: #1f2a3d; --text: #e5e7eb; --muted: #94a3b8;
+    --accent: #818cf8; --accent-2: #a78bfa; --accent-soft: #1e1b4b; --code-bg: #0b1020; --code-text: #e2e8f0; --ok: #34d399;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #070b16; --bg-2: #0b1020; --panel: #111827; --border: #1f2a3d; --text: #e5e7eb; --muted: #94a3b8;
+  --accent: #818cf8; --accent-2: #a78bfa; --accent-soft: #1e1b4b; --code-bg: #0b1020; --code-text: #e2e8f0; --ok: #34d399;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 Inter, "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); text-decoration: none; }
+code, pre { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+section { padding: 88px 0; }
+.alt { background: var(--bg-2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin: 0 0 12px; }
+h1, h2, h3 { letter-spacing: -.025em; line-height: 1.15; margin: 0; }
+h2 { font-size: clamp(28px, 4vw, 40px); margin-bottom: 14px; }
+.lead { color: var(--muted); font-size: 18px; max-width: 640px; margin: 0 0 40px; }
+
+nav { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(12px); background: color-mix(in srgb, var(--bg) 80%, transparent); border-bottom: 1px solid var(--border); }
+nav .wrap { display: flex; align-items: center; gap: 24px; height: 60px; }
+.logo { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 18px; color: var(--text); }
+.logo i { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; font-style: normal; font-size: 13px; }
+nav .links { display: flex; gap: 22px; margin-left: auto; font-size: 14px; }
+nav .links a { color: var(--muted); } nav .links a:hover { color: var(--text); }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: 10px; font-weight: 600; font-size: 15px; border: 1px solid var(--border); color: var(--text); background: var(--panel); white-space: nowrap; }
+.btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; border: 0; }
+.btn.sm { padding: 7px 14px; font-size: 14px; }
+.btn:hover { filter: brightness(1.08); }
+
+.hero { padding: 96px 0 64px; text-align: center; position: relative; overflow: hidden; }
+.hero::before { content: ""; position: absolute; inset: -40% -10% auto; height: 700px; background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 22%, transparent), transparent); pointer-events: none; }
+.hero .wrap { position: relative; }
+.pill { display: inline-flex; gap: 8px; align-items: center; padding: 5px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel); font-size: 13px; color: var(--muted); margin-bottom: 26px; }
+.pill b { color: var(--accent); }
+.hero h1 { font-size: clamp(40px, 7vw, 76px); font-weight: 800; letter-spacing: -.04em; }
+.grad { background: linear-gradient(135deg, var(--accent), var(--accent-2) 60%, #ec4899); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero p { font-size: clamp(17px, 2vw, 20px); color: var(--muted); max-width: 680px; margin: 22px auto 34px; }
+.cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.shot { margin: 64px auto 0; max-width: 1040px; border-radius: 14px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 30px 80px -20px rgba(15, 23, 42, .45); }
+.shot img { display: block; width: 100%; height: auto; }
+.caption { font-size: 13px; color: var(--muted); margin-top: 14px; }
+
+.install { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.term { background: var(--code-bg); color: var(--code-text); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
+.term .bar { display: flex; align-items: center; gap: 6px; padding: 10px 14px; border-bottom: 1px solid #1f2a3d; font-size: 13px; color: #94a3b8; }
+.term .bar span { width: 10px; height: 10px; border-radius: 50%; background: #334155; }
+.term .bar em { margin-left: 8px; font-style: normal; }
+.term pre { margin: 0; padding: 18px; font-size: 13.5px; line-height: 1.7; overflow-x: auto; }
+.term .c { color: #64748b; } .term .p { color: #818cf8; }
+.say { margin-top: 20px; padding: 18px 20px; border-radius: 12px; border: 1px dashed var(--accent); background: var(--accent-soft); }
+.say code { font-size: 14px; }
+
+.loop { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; counter-reset: s; }
+.loop div { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 14px; position: relative; }
+.loop div::before { counter-increment: s; content: counter(s, decimal-leading-zero); font: 600 12px "JetBrains Mono", monospace; color: var(--accent); }
+.loop div.gate { border-color: var(--accent); }
+.loop h3 { font-size: 16px; margin: 6px 0 4px; }
+.loop p { font-size: 13px; color: var(--muted); margin: 0; }
+.guards { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+.guards span { font-size: 13.5px; padding: 6px 12px; border-radius: 999px; background: var(--panel); border: 1px solid var(--border); color: var(--muted); }
+.guards b { color: var(--text); font-weight: 600; }
+
+.roles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.role { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 20px; transition: transform .15s, border-color .15s; }
+.role:hover { transform: translateY(-2px); border-color: var(--accent); }
+.role .ic { font-size: 22px; }
+.role h3 { font-size: 16px; margin: 10px 0 6px; }
+.role p { margin: 0; font-size: 14px; color: var(--muted); }
+.role.lead { grid-column: span 2; background: linear-gradient(135deg, var(--accent-soft), var(--panel)); border-color: var(--accent); }
+.role.you { border-style: dashed; }
+
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+.stat { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+.stat strong { display: block; font-size: 44px; font-weight: 800; letter-spacing: -.03em; }
+.stat span { color: var(--muted); font-size: 14px; }
+.research { display: grid; grid-template-columns: 1.1fr 1fr; gap: 32px; align-items: start; }
+.research ul { margin: 0; padding-left: 20px; color: var(--muted); }
+.research li { margin-bottom: 10px; } .research li b { color: var(--text); }
+.note { font-size: 13.5px; color: var(--muted); border-left: 3px solid var(--accent); padding-left: 14px; }
+
+.features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.feat { padding: 22px; border-radius: 14px; border: 1px solid var(--border); background: var(--panel); }
+.feat h3 { font-size: 17px; margin-bottom: 8px; }
+.feat p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+.faq details { border-bottom: 1px solid var(--border); padding: 18px 0; }
+.faq summary { cursor: pointer; font-weight: 600; font-size: 17px; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+.faq summary::after { content: "+"; color: var(--accent); font-size: 22px; line-height: 1; }
+.faq details[open] summary::after { content: "–"; }
+.faq p { color: var(--muted); margin: 12px 0 0; }
+
+.final { text-align: center; }
+.final h2 { font-size: clamp(32px, 5vw, 52px); }
+footer { border-top: 1px solid var(--border); padding: 32px 0; color: var(--muted); font-size: 14px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; }
+
+@media (max-width: 960px) {
+  .loop { grid-template-columns: repeat(2, 1fr); }
+  .roles { grid-template-columns: repeat(2, 1fr); }
+  .install, .research, .features { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  section { padding: 64px 0; }
+  nav .links a.hide-sm { display: none; }
+  nav .wrap { gap: 12px; }
+  .roles { grid-template-columns: 1fr; } .role.lead { grid-column: auto; }
+  .loop { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <a class="logo" href="#"><i>11</i>eleven</a>
+  <div class="links">
+    <a class="hide-sm" href="#how">How it works</a>
+    <a class="hide-sm" href="#team">Team</a>
+    <a class="hide-sm" href="#research">Research</a>
+    <a href="/app/">Live UI</a>
+    <a href="https://github.com/AbdullhRtima/eleven">GitHub</a>
+  </div>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <div class="pill"><b>Open source</b> · MIT · macOS, Windows, Linux</div>
+  <h1>Your AI,<br><span class="grad">organised into a team.</span></h1>
+  <p>Eleven roles, one loop, shared files. Drop one folder into any project and your coding agent works like a full software team: product, design, architecture, engineering, QA, DevOps, security and docs, led by a CTO.</p>
+  <div class="cta">
+    <a class="btn primary" href="#install">Get started</a>
+    <a class="btn" href="https://github.com/AbdullhRtima/eleven">★ Star on GitHub</a>
+  </div>
+  <div class="shot"><img src="assets/live-ui.png" alt="The eleven live UI showing an item's loop, rounds, tasks and activity" width="1440" height="1000"></div>
+  <p class="caption">The live UI: watch the loop, the tasks and every report as your agents write them.</p>
+</div></header>
+
+<section id="install" class="alt"><div class="wrap">
+  <p class="eyebrow">Install in a minute</p>
+  <h2>One folder. Invisible to git.</h2>
+  <p class="lead">eleven installs to <code>./eleven</code> in your project and hides itself with <code>.git/info/exclude</code>, so your repo and your teammates never see it. No dependencies, no server.</p>
+  <div class="install">
+    <div class="term"><div class="bar"><span></span><span></span><span></span><em>macOS · Linux</em></div>
+<pre><span class="c"># once</span>
+<span class="p">$</span> git clone https://github.com/AbdullhRtima/eleven ~/eleven
+
+<span class="c"># per project</span>
+<span class="p">$</span> ~/eleven/install.sh ~/code/my-app</pre></div>
+    <div class="term"><div class="bar"><span></span><span></span><span></span><em>Windows · PowerShell</em></div>
+<pre><span class="c"># once</span>
+<span class="p">&gt;</span> git clone https://github.com/AbdullhRtima/eleven $HOME\eleven
+
+<span class="c"># per project</span>
+<span class="p">&gt;</span> ~\eleven\install.ps1 C:\code\my-app</pre></div>
+  </div>
+  <div class="say">Then tell Claude Code, Codex, opencode or Cursor:<br>
+    <code>Read eleven/AGENTS.md and act as the CTO. New item 001: &lt;your idea&gt;. Start at step 0.</code></div>
+</div></section>
+
+<section id="how"><div class="wrap">
+  <p class="eyebrow">How it works</p>
+  <h2>A loop, not a long chat.</h2>
+  <p class="lead">Long chats rot: context fills with noise and the model forgets its own decisions. eleven gives each task a fresh agent and keeps memory in a small, rewritten set of files called the ledger.</p>
+  <div class="loop">
+    <div class="gate"><h3>Intake</h3><p>Product writes a brief with testable criteria. <b>You approve.</b></p></div>
+    <div><h3>Plan</h3><p>The CTO writes a short strategy and seed tasks.</p></div>
+    <div><h3>Explore</h3><p>The architect maps the hard part, the options and the pitfalls. No code yet.</p></div>
+    <div><h3>Manage</h3><p>The CTO picks exactly one next task for one role.</p></div>
+    <div><h3>Execute</h3><p>A fresh agent does that task and files a report with evidence.</p></div>
+    <div><h3>Verify</h3><p>QA checks every criterion. A red check beats any "done".</p></div>
+    <div class="gate"><h3>Ship</h3><p>Merge and release small and often. <b>You accept.</b></p></div>
+  </div>
+  <div class="guards">
+    <span><b>10</b> round budget</span><span><b>No-progress</b> stop</span><span>plan.md <b>≤ 4k</b> chars</span><span>notes.md <b>≤ 8k</b> chars, rewritten</span><span><b>Open questions</b> pause for you</span><span><b>One task</b> per fresh context</span>
+  </div>
+</div></section>
+
+<section id="team" class="alt"><div class="wrap">
+  <p class="eyebrow">The team</p>
+  <h2>Eleven roles. You're the CEO.</h2>
+  <p class="lead">Each role is one short Markdown file: what it does, what it never does, and when it's done. Not every task needs everyone. A bug fix is just CTO → engineer → QA.</p>
+  <div class="roles">
+    <div class="role lead"><div class="ic">🧭</div><h3>CTO</h3><p>Runs the loop. Plans, picks the next task and role, merges, ships, and enforces the guards.</p></div>
+    <div class="role"><div class="ic">📋</div><h3>Product manager</h3><p>Brief, scope, non-goals, testable acceptance criteria.</p></div>
+    <div class="role"><div class="ic">🎨</div><h3>Designer</h3><p>Flows, screens, every state, real copy, accessibility.</p></div>
+    <div class="role"><div class="ic">🏛️</div><h3>Architect</h3><p>The core difficulty, the approaches, interfaces and decision records.</p></div>
+    <div class="role"><div class="ic">⚙️</div><h3>Backend</h3><p>APIs, domain logic, data, safe migrations. Test-first.</p></div>
+    <div class="role"><div class="ic">🖥️</div><h3>Frontend</h3><p>Web UI built to design in every state, accessible and fast.</p></div>
+    <div class="role"><div class="ic">📱</div><h3>Mobile</h3><p>iOS and Android: offline, app lifecycle, permissions.</p></div>
+    <div class="role"><div class="ic">🧪</div><h3>QA</h3><p>Verifies every criterion with evidence. Can veto "done".</p></div>
+    <div class="role"><div class="ic">🚀</div><h3>DevOps</h3><p>CI, deploys, rollback, observability.</p></div>
+    <div class="role"><div class="ic">🛡️</div><h3>Security</h3><p>Threat models and reviews. High severity blocks shipping.</p></div>
+    <div class="role"><div class="ic">✍️</div><h3>Tech writer</h3><p>README, docs and changelog that match what shipped.</p></div>
+    <div class="role you"><div class="ic">👤</div><h3>You</h3><p>Approve the brief, answer questions, accept the result.</p></div>
+  </div>
+</div></section>
+
+<section id="research"><div class="wrap">
+  <p class="eyebrow">Built on research</p>
+  <h2>Organisation beats raw model size.</h2>
+  <p class="lead">eleven's loop comes from <a href="https://arxiv.org/abs/2608.26480">GVS5H</a> (Gao et al., 2026): one model, split into a manager and fresh single-task workers that coordinate through files on disk.</p>
+  <div class="stats">
+    <div class="stat"><strong>+25.6</strong><span>points on hard LiveCodeBench problems for Qwen3.8-27B (66.8 → 92.4)</span></div>
+    <div class="stat"><strong>93.0 vs 90.4</strong><span>an orchestrated cheap model beat a frontier model…</span></div>
+    <div class="stat"><strong>~9%</strong><span>…at about 9% of the cost</span></div>
+  </div>
+  <div class="research">
+    <ul>
+      <li><b>Decomposition:</b> one task per call keeps every agent focused.</li>
+      <li><b>Persistent context:</b> the ledger outlives any single conversation.</li>
+      <li><b>Reasoning on disk before code:</b> notes first, then implementation.</li>
+      <li><b>Verifier override:</b> a failing test beats a confident "done".</li>
+    </ul>
+    <p class="note">To be fair about it: the scaffold uses about 3× the tokens of a single call, strong models gain least, and some configurations got worse. eleven adds the roles a real product needs (design, security, DevOps, docs) and keeps you at every gate.</p>
+  </div>
+</div></section>
+
+<section class="alt"><div class="wrap">
+  <p class="eyebrow">Why eleven</p>
+  <h2>Small enough to read. Strict enough to trust.</h2>
+  <p class="lead">The whole kit is about 25 Markdown files. Read it in fifteen minutes, then change anything.</p>
+  <div class="features">
+    <div class="feat"><h3>Works with your agent</h3><p>Claude Code, Codex, opencode, Cursor: anything that reads AGENTS.md. No lock-in, no framework.</p></div>
+    <div class="feat"><h3>Live UI in the browser</h3><p>Open your eleven folder at <a href="/app/">eleven.rtima.org/app</a> or locally. It updates every 2 seconds and nothing is uploaded.</p></div>
+    <div class="feat"><h3>Needs-you alerts</h3><p>Open questions, briefs waiting for approval and QA failures are pulled to the top.</p></div>
+    <div class="feat"><h3>Evidence, not vibes</h3><p>Every report pastes the real build and test output. QA re-runs it.</p></div>
+    <div class="feat"><h3>Decisions on record</h3><p>Expensive choices get a one-page record, so nobody re-argues them next month.</p></div>
+    <div class="feat"><h3>Cross-platform</h3><p>install.sh for macOS and Linux, install.ps1 for Windows. Safe re-installs; <code>--update</code> never touches your work.</p></div>
+  </div>
+</div></section>
+
+<section class="faq"><div class="wrap" style="max-width:780px">
+  <p class="eyebrow">FAQ</p>
+  <h2>Questions</h2>
+  <details><summary>Does it cost more tokens?</summary><p>Yes, often about 3× a single chat for a full loop. You buy fewer reworks, fewer surprises and a written trail of why. For tiny fixes, skip roles: CTO → engineer → QA.</p></details>
+  <details><summary>Does my code or ledger go anywhere?</summary><p>No. eleven is just files in your project. The live UI reads your folder in your browser through the File System Access API; nothing is uploaded.</p></details>
+  <details><summary>Which browsers support the live UI?</summary><p>Chrome and Edge give live updates. Firefox and Safari can open a snapshot.</p></details>
+  <details><summary>Will my teammates see it?</summary><p>No. It's excluded through <code>.git/info/exclude</code>, which is local to your clone. To share the ledger with your team, remove that line and commit <code>eleven/work</code>.</p></details>
+  <details><summary>Can I change the roles?</summary><p>Please do. When an agent repeats a mistake, add a line to its role file. That's how your team learns.</p></details>
+</div></section>
+
+<section class="final alt"><div class="wrap">
+  <h2>Stop chatting. <span class="grad">Start leading.</span></h2>
+  <p class="lead" style="margin:16px auto 32px">Give your agent a team, a loop and a definition of done.</p>
+  <div class="cta"><a class="btn primary" href="#install">Install eleven</a><a class="btn" href="/app/">Open the live UI</a></div>
+</div></section>
+
+<footer><div class="wrap">
+  <span><b>eleven</b>: M-theory needs eleven dimensions to unify everything.</span>
+  <span>MIT · <a href="https://github.com/AbdullhRtima/eleven">GitHub</a> · <a href="https://rtima.org">rtima.org</a></span>
+</div></footer>
+
+</body>
+</html>
