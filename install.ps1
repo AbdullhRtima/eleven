@@ -44,6 +44,8 @@ foreach ($item in "AGENTS.md", "README.md", "install.sh", "install.ps1", "agents
     Copy-Missing $src $dst
   }
 }
+# The UI test suite is for kit development only.
+Remove-Item (Join-Path $dest "ui\test") -Recurse -Force -ErrorAction SilentlyContinue
 $projectMd = Join-Path $dest "project.md"
 if (-not (Test-Path $projectMd)) { Copy-Item (Join-Path $kit "templates\project.md") $projectMd }
 

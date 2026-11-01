@@ -38,10 +38,17 @@ Your `project.md`, `work/` and `decisions/` are never touched.
 ## Watch it work
 
 Open **[eleven.rtima.org/app](https://eleven.rtima.org/app/)**, or `eleven/ui/index.html`
-locally, in Chrome or Edge, then choose your project's `eleven` folder. You see each
-item's loop step, round budget, tasks, reports and a live activity feed, and
-anything that needs your answer is pulled to the top. The page reads the folder in
-your browser; nothing is uploaded. Firefox and Safari open a snapshot instead.
+locally, in Chrome or Edge, then choose your project's `eleven` folder.
+
+- **Home:** one card per item showing what it's doing now. Items waiting on you come first, with their open
+  questions folded underneath.
+- **Tree + reader:** browse every ledger file and read it like Obsidian. HTML mockups open in a sandboxed frame.
+- **Work graph:** project → items → tasks → what each task produced, coloured by status.
+
+It updates every 2 seconds as your agents write. The page reads the folder in your browser; nothing is uploaded.
+Firefox and Safari open a snapshot instead.
+
+![The eleven live UI](site/assets/ui-home-light.png)
 
 ## Use it
 

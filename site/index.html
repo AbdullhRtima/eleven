@@ -7,7 +7,7 @@
 <meta name="description" content="Open-source Markdown kit that turns your coding agent into an 11-role software team: product, design, architecture, engineering, QA, DevOps, security and docs, led by a CTO. Works with Claude Code, Codex, opencode and Cursor.">
 <meta property="og:title" content="eleven · your AI, organised into a team">
 <meta property="og:description" content="Eleven roles. One loop. Shared files. Drop one folder into any project.">
-<meta property="og:image" content="https://eleven.rtima.org/assets/live-ui.png">
+<meta property="og:image" content="https://eleven.rtima.org/assets/ui-home-light.png">
 <meta property="og:url" content="https://eleven.rtima.org/">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236366f1'/%3E%3Ctext x='16' y='22' font-family='Arial' font-weight='700' font-size='15' fill='white' text-anchor='middle'%3E11%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -107,6 +107,13 @@ nav .links a { color: var(--muted); } nav .links a:hover { color: var(--text); }
 .feat h3 { font-size: 17px; margin-bottom: 8px; }
 .feat p { margin: 0; color: var(--muted); font-size: 14.5px; }
 
+.views { display: grid; grid-template-columns: 1fr 1fr; gap: 28px 24px; }
+.views figure { margin: 0; }
+.views figure.wide { grid-column: 1 / -1; }
+.views .shot { margin: 0 0 16px; max-width: none; box-shadow: 0 20px 50px -24px rgba(15, 23, 42, .4); }
+.views h3 { font-size: 17px; margin-bottom: 6px; }
+.views p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
 .faq details { border-bottom: 1px solid var(--border); padding: 18px 0; }
 .faq summary { cursor: pointer; font-weight: 600; font-size: 17px; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
 .faq summary::after { content: "+"; color: var(--accent); font-size: 22px; line-height: 1; }
@@ -121,7 +128,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space
 @media (max-width: 960px) {
   .loop { grid-template-columns: repeat(2, 1fr); }
   .roles { grid-template-columns: repeat(2, 1fr); }
-  .install, .research, .features { grid-template-columns: 1fr; }
+  .install, .research, .features, .views { grid-template-columns: 1fr; }
   .stats { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
@@ -154,8 +161,8 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space
     <a class="btn primary" href="#install">Get started</a>
     <a class="btn" href="https://github.com/AbdullhRtima/eleven">★ Star on GitHub</a>
   </div>
-  <div class="shot"><img src="assets/live-ui.png" alt="The eleven live UI showing an item's loop, rounds, tasks and activity" width="1440" height="1000"></div>
-  <p class="caption">The live UI: watch the loop, the tasks and every report as your agents write them.</p>
+  <div class="shot"><img src="assets/ui-home-light.png" alt="The eleven live UI home: a file tree on the left and one card per item, with the item that waits on you first" width="1600" height="1000"></div>
+  <p class="caption">The live UI: what each item is doing now, and what waits on you.</p>
 </div></header>
 
 <section id="install" class="alt"><div class="wrap">
@@ -195,6 +202,26 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space
   </div>
   <div class="guards">
     <span><b>10</b> round budget</span><span><b>No-progress</b> stop</span><span>plan.md <b>≤ 4k</b> chars</span><span>notes.md <b>≤ 8k</b> chars, rewritten</span><span><b>Open questions</b> pause for you</span><span><b>One task</b> per fresh context</span>
+  </div>
+</div></section>
+
+<section id="see" style="border-top:1px solid var(--border)"><div class="wrap">
+  <p class="eyebrow">The live UI</p>
+  <h2>See your team work.</h2>
+  <p class="lead">Open your project folder in the browser. The page reads the ledger while your agents write it. Files stay on your computer.</p>
+  <div class="views">
+    <figure class="wide">
+      <div class="shot"><img src="assets/ui-graph-light.png" alt="The work graph: the project, its items, each item's tasks coloured by status, and the reports, design files and decisions they produced" width="1600" height="1000" loading="lazy"></div>
+      <figcaption><h3>Project → items → tasks → outputs</h3><p>The work graph shows every task, coloured by status, with the reports, designs and decisions it produced. Click any node to open it.</p></figcaption>
+    </figure>
+    <figure>
+      <div class="shot"><img src="assets/ui-home-light.png" alt="Home: one card per item; the item waiting on you comes first, in amber, with its open questions folded" width="1600" height="1000" loading="lazy"></div>
+      <figcaption><h3>What's happening, what waits on you</h3><p>One card per item. Items that wait on you come first, in amber, with their open questions folded away.</p></figcaption>
+    </figure>
+    <figure>
+      <div class="shot"><img src="assets/ui-reader-graph-dark.png" alt="Dark theme: the file tree, a report open in the reader, and the work graph beside it" width="1600" height="1000" loading="lazy"></div>
+      <figcaption><h3>Read it like Obsidian</h3><p>A file tree on the left, the doc in the middle, the graph beside it. Paths in a doc are links. Light and dark.</p></figcaption>
+    </figure>
   </div>
 </div></section>
 
@@ -244,8 +271,8 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space
   <p class="lead">The whole kit is about 25 Markdown files. Read it in fifteen minutes, then change anything.</p>
   <div class="features">
     <div class="feat"><h3>Works with your agent</h3><p>Claude Code, Codex, opencode, Cursor: anything that reads AGENTS.md. No lock-in, no framework.</p></div>
-    <div class="feat"><h3>Live UI in the browser</h3><p>Open your eleven folder at <a href="/app/">eleven.rtima.org/app</a> or locally. It updates every 2 seconds and nothing is uploaded.</p></div>
-    <div class="feat"><h3>Needs-you alerts</h3><p>Open questions, briefs waiting for approval and QA failures are pulled to the top.</p></div>
+    <div class="feat"><h3>Live UI in the browser</h3><p>Open your project at <a href="/app/">eleven.rtima.org/app</a> or locally: a file tree, a reader for every doc, and a work graph. It updates every 2 seconds and nothing is uploaded.</p></div>
+    <div class="feat"><h3>Waiting on you, first</h3><p>When the next step is yours, that item's card comes first, in amber: one line on what to do, with the open questions folded underneath.</p></div>
     <div class="feat"><h3>Evidence, not vibes</h3><p>Every report pastes the real build and test output. QA re-runs it.</p></div>
     <div class="feat"><h3>Decisions on record</h3><p>Expensive choices get a one-page record, so nobody re-argues them next month.</p></div>
     <div class="feat"><h3>Cross-platform</h3><p>install.sh for macOS and Linux, install.ps1 for Windows. Safe re-installs; <code>--update</code> never touches your work.</p></div>
@@ -257,7 +284,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space
   <h2>Questions</h2>
   <details><summary>Does it cost more tokens?</summary><p>Yes, often about 3× a single chat for a full loop. You buy fewer reworks, fewer surprises and a written trail of why. For tiny fixes, skip roles: CTO → engineer → QA.</p></details>
   <details><summary>Does my code or ledger go anywhere?</summary><p>No. eleven is just files in your project. The live UI reads your folder in your browser through the File System Access API; nothing is uploaded.</p></details>
-  <details><summary>Which browsers support the live UI?</summary><p>Chrome and Edge give live updates. Firefox and Safari can open a snapshot.</p></details>
+  <details><summary>Which browsers support the live UI?</summary><p>Chrome and Edge give live updates. Firefox and Safari open a snapshot; pick the folder again to refresh it. Either way the files stay in your browser and nothing is uploaded. HTML files from the ledger open in a sandboxed frame.</p></details>
   <details><summary>Will my teammates see it?</summary><p>No. It's excluded through <code>.git/info/exclude</code>, which is local to your clone. To share the ledger with your team, remove that line and commit <code>eleven/work</code>.</p></details>
   <details><summary>Can I change the roles?</summary><p>Please do. When an agent repeats a mistake, add a line to its role file. That's how your team learns.</p></details>
 </div></section>

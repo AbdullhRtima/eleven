@@ -26,6 +26,7 @@ for item in AGENTS.md README.md install.sh install.ps1 agents templates docs ui;
     cp -Rn "$kit/$item" "$dest/" 2>/dev/null || true
   fi
 done
+rm -rf "$dest/ui/test"   # the UI test suite is for kit development only
 [[ -f "$dest/project.md" ]] || cp "$kit/templates/project.md" "$dest/project.md"
 
 if git -C "$project" rev-parse --git-dir >/dev/null 2>&1; then
