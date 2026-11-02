@@ -3,8 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Security M1, option B (CEO 2026-11-01: ledger .html mockups keep their JS). The sandboxed blob frame inherits this policy;
+     the frame's own csp attribute (FRAME_CSP) takes its network away. A meta CSP can't set frame-ancestors or report-uri. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https:; frame-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <title>eleven · live</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236366f1'/%3E%3Ctext x='16' y='22' font-family='Arial' font-weight='700' font-size='15' fill='white' text-anchor='middle'%3E11%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2316140F'/%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='%23FF8A5C' stroke-width='2'/%3E%3Cpath d='M13.5 10.5v11M18.5 10.5v11' stroke='%23F3EFE6' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js" integrity="sha512-xeUh+KxNyTufZOje++oQHstlMQ8/rpyzPuM+gjMFYK3z5ILJGE7l2NvYL+XfliKURMpBIKKp1XoPN/qswlSMFA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -187,6 +190,9 @@ details.q[open] summary svg { transform: rotate(90deg); }
 .doc pre { background: var(--code-bg); color: var(--code-text); padding: 14px 16px; border-radius: 10px; overflow: auto; font-size: 13px; line-height: 1.6; border: 1px solid var(--border); }
 .doc pre code { background: none; padding: 0; font-size: inherit; color: inherit; }
 .doc img { max-width: 100%; }
+.doc li:has(> input[type="checkbox"]:first-child), .doc li:has(> p:first-child > input[type="checkbox"]:first-child) { list-style: none; }
+.doc input[type="checkbox"] { width: 15px; height: 15px; margin: 0 6px 0 0; vertical-align: -2px; accent-color: var(--accent); opacity: 1; }
+.doc li > input[type="checkbox"]:first-child, .doc li > p:first-child > input[type="checkbox"]:first-child { margin: 0 8px 0 -21px; }
 .tablewrap { overflow-x: auto; margin: 0 0 16px; border: 1px solid var(--border); border-radius: 10px; }
 .doc table { border-collapse: collapse; width: 100%; font-size: 14px; line-height: 1.5; }
 .doc th, .doc td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
@@ -330,7 +336,7 @@ button.imgoff:hover { color: var(--text); border-color: var(--muted); }
   <span class="grow"></span>
   <div class="pillwrap">
     <button id="pill" class="pill" hidden><span class="dot"></span><span class="txt"></span></button>
-    <div id="pillMenu" class="menu right" hidden><p>Pick the folder again to refresh.</p><button class="btn sm primary" id="pillOpen">Open folder</button></div>
+    <div id="pillMenu" class="menu right" hidden><p>Pick the folder again to refresh.</p><button class="btn sm primary" id="pillOpen">Open the eleven folder</button></div>
   </div>
   <button id="graphBtn" class="btn sm hide-phone" aria-pressed="false">
     <svg class="graph-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="3.5" cy="4" r="2"/><circle cx="12.5" cy="3.5" r="2"/><circle cx="8" cy="12.5" r="2"/><path d="M5.3 5.1 7 10.6M10.9 4.8 9 10.7M5.5 3.9h5"/></svg>Graph</button>
@@ -399,14 +405,26 @@ const S = {
 // ---------------------------------------------------------------- markdown
 // Ledger files are untrusted: only document content survives. No styles, forms, frames or media, no ids/classes/data-*
 // that could hit the UI's own CSS or handlers, and nothing that loads from the network on its own (QA B1).
+// No inline SVG or MathML (security M4): they could cover the reader, crash enhanceHtml, and are where most mXSS lives.
+// <input> survives only as a disabled task-list checkbox (QA N2); every other input is removed in the hooks below.
 const PURIFY = {
-  FORBID_TAGS: ["style", "link", "meta", "base", "form", "input", "button", "textarea", "select", "option", "optgroup", "fieldset",
+  FORBID_TAGS: ["svg", "math", "style", "link", "meta", "base", "form", "button", "textarea", "select", "option", "optgroup", "fieldset",
     "label", "output", "datalist", "iframe", "frame", "frameset", "object", "embed", "applet", "portal", "audio", "video", "source",
     "track", "picture", "map", "area", "dialog", "marquee", "image", "use", "feimage", "foreignobject"],
   FORBID_ATTR: ["style", "class", "id", "srcset", "background", "poster", "action", "formaction", "ping", "xlink:href", "target"],
   ALLOW_DATA_ATTR: false,
 };
+if (window.DOMPurify) DOMPurify.addHook("uponSanitizeElement", (node, data) => {
+  if (data.tagName === "input" && (node.getAttribute("type") || "").toLowerCase() !== "checkbox") node.remove();
+});
 if (window.DOMPurify) DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+  if (node.nodeName === "INPUT") {   // a task-list box: keep only checked, always disabled
+    const on = node.hasAttribute("checked");
+    for (const a of [...node.attributes]) node.removeAttribute(a.name);
+    node.setAttribute("type", "checkbox"); node.setAttribute("disabled", "");
+    if (on) node.setAttribute("checked", "");
+    return;
+  }
   if (node.nodeName !== "IMG") return;
   const src = (node.getAttribute("src") || "").trim();
   if (/^data:image\//i.test(src)) return;
@@ -567,15 +585,16 @@ function buildModel() {
 }
 
 // ---------------------------------------------------------------- sources
+// Security M3: if the picked folder holds eleven/, read (and save) only that sub-folder, never the whole project.
 async function fsaRoot(picked) {
   try { const sub = await picked.getDirectoryHandle("eleven"); return { root: sub, name: picked.name }; } catch {}
   return { root: picked, name: picked.name };
 }
-function fsaSource(picked) {
+// root: the eleven folder handle. save: { h, name } to store once the first scan finds a ledger (null = don't save).
+function fsaSource(root, name, save = null) {
   return {
-    kind: "fsa", handle: picked, name: picked.name,
+    kind: "fsa", handle: root, name, save,
     async scan() {
-      const { root } = await fsaRoot(picked);
       const files = new Map(), dirs = new Set();
       let ledger = false;
       const walk = async (dir, prefix) => {
@@ -657,7 +676,10 @@ function idb() {
     } catch (e) { rej(e); }
   });
 }
-async function saveHandle(h) { try { const db = await idb(); db.transaction("h", "readwrite").objectStore("h").put(h, "root"); } catch {} }
+// Stored value: { h: <the eleven folder handle>, name: <project folder name> }. A bare handle is the old format (task 7 and
+// before), which could be the whole project: boot() replaces it or drops it.
+async function saveHandle(rec) { try { const db = await idb(); db.transaction("h", "readwrite").objectStore("h").put(rec, "root"); } catch {} }
+async function dropHandle() { try { const db = await idb(); db.transaction("h", "readwrite").objectStore("h").delete("root"); } catch {} }
 async function loadHandle() {
   try {
     const db = await idb();
@@ -670,30 +692,43 @@ async function refresh() {
   if (S.busy || !S.source) return;
   S.busy = true;
   const first = S.first;
-  try {
+  let ch = null;
+  try {   // only reading the folder can mean "Lost access"; a render error never does (security M4)
     const scan = await S.source.scan();
-    if (!scan.ledger) { S.noLedger = true; S.files = new Map(); S.dirs = new Set(); renderAll({ first: true, changed: new Set(), removed: new Set() }); return; }
-    S.noLedger = false;
-    const changed = new Set(), removed = new Set(), next = new Map();
-    for (const [p, e] of scan.files) {
-      const old = S.files.get(p);
-      if (old && old.mtime === e.mtime) { next.set(p, { ...old, entry: e }); continue; }
-      const text = isMd(p) ? await e.read() : null;   // never read .html while polling
-      next.set(p, { path: p, mtime: e.mtime, text, entry: e });
-      changed.add(p);
+    if (!scan.ledger) { S.noLedger = true; S.files = new Map(); S.dirs = new Set(); ch = { first: true, changed: new Set(), removed: new Set() }; }
+    else {
+      S.noLedger = false;
+      const changed = new Set(), removed = new Set(), next = new Map();
+      for (const [p, e] of scan.files) {
+        const old = S.files.get(p);
+        if (old && old.mtime === e.mtime) { next.set(p, { ...old, entry: e }); continue; }
+        const text = isMd(p) ? await e.read() : null;   // never read .html while polling
+        next.set(p, { path: p, mtime: e.mtime, text, entry: e });
+        changed.add(p);
+      }
+      for (const p of S.files.keys()) if (!next.has(p)) removed.add(p);
+      const dirsChanged = [...scan.dirs].join("|") !== [...S.dirs].join("|");
+      S.files = next; S.dirs = new Set(scan.dirs);
+      if (S.status === "paused" || S.status === "reading") setStatus(S.source.kind === "snapshot" ? "snapshot" : "live");
+      if (S.source.save) { saveHandle(S.source.save); S.source.save = null; }   // M3: persist only a folder that holds a ledger
+      ch = first || changed.size || removed.size || dirsChanged ? { first, changed, removed } : null;
     }
-    for (const p of S.files.keys()) if (!next.has(p)) removed.add(p);
-    const dirsChanged = [...scan.dirs].join("|") !== [...S.dirs].join("|");
-    S.files = next; S.dirs = new Set(scan.dirs);
-    if (S.status === "paused" || S.status === "reading") setStatus(S.source.kind === "snapshot" ? "snapshot" : "live");
-    if (first || changed.size || removed.size || dirsChanged) renderAll({ first, changed, removed });
-    else tick();
   } catch (e) {
     if (first) { console.error(e); }
     setStatus("paused");
+  }
+  try {
+    if (ch) renderAll(ch); else if (S.status !== "paused") tick();
+  } catch (e) {
+    renderFailed(e);
   } finally {
     S.busy = false; S.first = false;
   }
+}
+// A bug in rendering: say so where it happened, keep polling, never claim the folder is gone.
+function renderFailed(e) {
+  console.error(e);
+  toast("Couldn't show part of this page.");
 }
 
 function startSource(src) {
@@ -715,18 +750,20 @@ async function openFolder() {
   closeMenus();
   if (!("showDirectoryPicker" in window)) return $("#dirInput").click();
   try {
-    const h = await window.showDirectoryPicker({ id: "eleven", mode: "read" });
-    S.saved = h; saveHandle(h);
-    startSource(fsaSource(h));
+    const picked = await window.showDirectoryPicker({ id: "eleven", mode: "read" });
+    const { root, name } = await fsaRoot(picked);
+    const rec = { h: root, name };
+    S.saved = rec;
+    startSource(fsaSource(root, name, rec));
   } catch (e) { if (e && e.name !== "AbortError") console.error(e); }
 }
 async function reconnect() {
-  const h = S.saved;
-  if (!h) return openFolder();
+  const rec = S.saved;
+  if (!rec) return openFolder();
   try {
-    if ((await h.requestPermission({ mode: "read" })) === "granted") {
+    if ((await rec.h.requestPermission({ mode: "read" })) === "granted") {
       if (S.source && S.source.kind === "fsa") { $("#bar").innerHTML = ""; refresh(); }
-      else startSource(fsaSource(h));
+      else startSource(fsaSource(rec.h, rec.name));
     }
   } catch (e) { console.error(e); }
 }
@@ -775,18 +812,23 @@ function writeHash() {
   if (S.graphOpen) parts.push("graph");
   try { history.replaceState(null, "", parts.length ? "#" + parts.join("&") : location.pathname + location.search); } catch {}
 }
-function readHash() {
+const safeDecode = (s) => { try { return decodeURIComponent(s); } catch { return null; } };
+function readHash() {   // security L6: a malformed part (e.g. #file=%E0%A4%A) is ignored, so the page falls back to Home
   const h = {};
   for (const part of location.hash.replace(/^#/, "").split("&")) {
     if (!part) continue;
     const [k, v] = part.split("=");
-    h[k] = v == null ? true : decodeURIComponent(v);
+    const d = v == null ? true : safeDecode(v);
+    if (d != null) h[k] = d;
   }
   return h;
 }
-function scrollToAnchor(id) {
+// In-doc anchors: rendered headings carry the HID prefix (security L3); "#x", "#at=x" and "file.md#x" all mean HID + x.
+function scrollToAnchor(id, scope) {
+  if (!id) return;
   requestAnimationFrame(() => {
-    const el = document.getElementById(id);
+    const doc = scope || $("#view article.doc");
+    const el = doc && (doc.querySelector(`[id="${CSS.escape(HID + id)}"]`) || (id.startsWith(HID) && doc.querySelector(`[id="${CSS.escape(id)}"]`)));
     if (el) $("#pane").scrollTop = el.getBoundingClientRect().top - $("#pane").getBoundingClientRect().top + $("#pane").scrollTop - 16;
   });
 }
@@ -957,8 +999,8 @@ $("#tree").addEventListener("keydown", (e) => {
 
 // ---------------------------------------------------------------- home
 const STATE_ORDER = { waiting: 0, working: 1, idle: 2, new: 2, done: 3 };
-function cardHtml(it) {
-  const sentence = it.md ? enhanceHtml(mdInline(it.sentence), it.tasks || it.brief || `work/${it.id}/x.md`) : esc(it.sentence);
+function cardHtml(it, plainText) {   // plainText: the Markdown failed to render, so show the status with escaped text (M4)
+  const sentence = it.md && !plainText ? enhanceHtml(mdInline(it.sentence), it.tasks || it.brief || `work/${it.id}/x.md`) : esc(it.sentence);
   const near = it.round && it.state !== "done" && it.round.n >= it.round.max - 2;   // QA B7: a done item is never "near the limit"
   const titleEl = it.brief ? `<a href="#file=${esc(encodeURIComponent(it.brief))}" data-path="${esc(it.brief)}">${esc(it.title)}</a>` : esc(it.title);
   const sentTarget = it.tasks || it.brief;
@@ -967,8 +1009,8 @@ function cardHtml(it) {
       ${it.round ? `<span class="round${near ? " near" : ""}">Round ${it.round.n} of ${it.round.max}</span>` : ""}</div>
     <div class="sent" dir="auto"${sentTarget ? ` data-go="${esc(sentTarget)}" role="link" tabindex="0"` : ""}>${sentence}</div>
     <button class="more" hidden>Show more</button>
-    ${it.warn.map((w) => `<p class="warnline">⚠ ${esc(w)}</p>`).join("")}
-    ${it.state === "waiting" && it.questionsMd ? `<details class="q"><summary>${CHEV}Open questions${it.questionsCount ? ` (${it.questionsCount})` : ""}</summary>
+    ${it.warn.concat(plainText ? ["Couldn't show this item's Markdown, so it is shown as plain text."] : []).map((w) => `<p class="warnline">⚠ ${esc(w)}</p>`).join("")}
+    ${it.state === "waiting" && it.questionsMd && !plainText ? `<details class="q"><summary>${CHEV}Open questions${it.questionsCount ? ` (${it.questionsCount})` : ""}</summary>
       <div class="q-body doc">${enhanceHtml(mdHtml(it.questionsMd), it.brief)}</div>
       <div class="q-foot"><a href="#file=${esc(encodeURIComponent(it.brief))}" data-path="${esc(it.brief)}">Open brief</a></div></details>` : ""}`;
 }
@@ -996,7 +1038,8 @@ function renderHome(changed) {
   for (const el of $$(".card", box)) if (!keep.has(el.dataset.item)) { el.remove(); S.cardCache.delete(el.dataset.item); }
   const touched = new Set([...changed].map(itemOf).filter(Boolean));
   items.forEach((it, idx) => {
-    const html = cardHtml(it);
+    let html;
+    try { html = cardHtml(it); } catch { html = cardHtml(it, true); }
     let el = box.querySelector(`.card[data-item="${CSS.escape(it.id)}"]`);
     if (!el || S.cardCache.get(it.id) !== html) {
       const fresh = document.createElement("article");
@@ -1030,7 +1073,7 @@ $("#view").addEventListener("click", (e) => {
   const a = e.target.closest("a[data-path]");
   if (a) { e.preventDefault(); return navigate("file", a.dataset.path, { anchor: a.dataset.anchor }); }
   const hashA = e.target.closest('a[href^="#"]:not([data-path])');
-  if (hashA && hashA.closest(".doc")) { e.preventDefault(); return scrollToAnchor(decodeURIComponent(hashA.getAttribute("href").slice(1))); }
+  if (hashA && hashA.closest(".doc")) { e.preventDefault(); return scrollToAnchor(safeDecode(hashA.getAttribute("href").slice(1)), hashA.closest(".doc")); }
   const anyA = e.target.closest("a");
   if (anyA && !hashA) {   // QA B2: only http(s) links leave, and only in a new tab
     const href = anyA.getAttribute("href") || "";
@@ -1061,6 +1104,7 @@ $("#view").addEventListener("keydown", (e) => {
 });
 
 // ---------------------------------------------------------------- reader
+const HID = "h-", XHTML = "http://www.w3.org/1999/xhtml";
 function slug(s) { return s.toLowerCase().trim().replace(/<[^>]+>/g, "").replace(/[^\p{L}\p{N}\s-]/gu, "").replace(/\s+/g, "-"); }
 // Turn resolvable paths / "decision NNNN" in rendered (sanitised) HTML into reader links.
 function enhanceHtml(html, from) {
@@ -1072,21 +1116,22 @@ function enhanceHtml(html, from) {
     let id = slug(h.textContent) || "section";
     const n = used.get(id) || 0; used.set(id, n + 1);
     if (n) id += "-" + n;
-    h.id = id;
+    h.id = HID + id;   // security L3: prefixed, so "# toast" can't take over the UI's #toast
   }
   for (const t of root.querySelectorAll("table")) { const w = document.createElement("div"); w.className = "tablewrap"; t.replaceWith(w); w.appendChild(t); }
   // Links never navigate the app (QA B2): ledger file → reader, http(s) → new tab, anything else → inert (toast on click).
   for (const a of root.querySelectorAll("a")) {
+    if (a.namespaceURI !== XHTML) { a.replaceWith(...a.childNodes); continue; }   // M4: never an SVG/MathML <a> (read-only className/target)
     const href = (a.getAttribute("href") || "").trim();
     if (href.startsWith("#")) continue;
     const ext = /^https?:\/\//i.test(href) ? href : href.startsWith("//") ? "https:" + href : null;
-    if (ext) { a.setAttribute("href", ext); a.target = "_blank"; a.rel = "noopener noreferrer"; a.dataset.ext = "1"; continue; }
+    if (ext) { a.setAttribute("href", ext); a.setAttribute("target", "_blank"); a.setAttribute("rel", "noopener noreferrer"); a.dataset.ext = "1"; continue; }
     const r = href && !/^[a-z][a-z0-9+.-]*:/i.test(href) ? resolveRef(href, from) : null;
-    if (r) { a.dataset.path = r; a.className = "ref"; a.setAttribute("href", "#file=" + encodeURIComponent(r)); const frag = href.split("#")[1]; if (frag) a.dataset.anchor = frag; continue; }
+    if (r) { a.dataset.path = r; a.setAttribute("class", "ref"); a.setAttribute("href", "#file=" + encodeURIComponent(r)); const frag = href.split("#")[1]; if (frag) a.dataset.anchor = frag; continue; }
     a.removeAttribute("href");
     if (href) {
       const scheme = /^[a-z][a-z0-9+.-]*:/i.test(href);
-      a.className = "ref-off"; if (!scheme) a.dataset.missing = href;
+      a.setAttribute("class", "ref-off"); if (!scheme) a.dataset.missing = href;
       a.title = scheme ? "This link can't be opened here: " + href : "Not in this folder: " + href;
       a.setAttribute("role", "link"); a.setAttribute("aria-disabled", "true"); a.tabIndex = 0;
     }
@@ -1211,6 +1256,11 @@ function patchChildren(a, b) {
 }
 
 let blobUrl = null;
+// Security M2: a ledger .html runs its own scripts but gets no network. Chromium enforces the iframe csp attribute; the same
+// policy is also written at the top of the blob for browsers without it (snapshot mode). The page CSP's frame-src blob:
+// stops it navigating itself or nesting a remote frame.
+const FRAME_CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:";
+const FRAME_HEAD = `<!doctype html><meta http-equiv="Content-Security-Policy" content="${FRAME_CSP}">`;
 function revokeBlob() { if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null; } }
 async function renderHtmlView(path, f, key) {
   const view = $("#view");
@@ -1232,16 +1282,23 @@ async function renderHtmlView(path, f, key) {
     <div class="meta"><span id="metaTime" title="${esc(new Date(f.mtime).toLocaleString())}">Updated ${esc(relTime(f.mtime))}</span>
       <button class="btn sm" id="fullBtn">Full screen</button></div>
     <div class="framebox" id="framebox"><button class="btn sm exitfull" id="exitFull">Exit full screen</button>
-      <iframe sandbox="allow-scripts" title="${esc(baseName(path))}" referrerpolicy="no-referrer"></iframe></div>
-    <p class="framenote">Runs in a sandbox. Images next to the file may not load.</p>`;
+      <iframe sandbox="allow-scripts" csp="${FRAME_CSP}" title="${esc(baseName(path))}" referrerpolicy="no-referrer"></iframe></div>
+    <p class="framenote">Runs in a sandbox with no internet access. Web fonts and images may not load.</p>`;
   $("#fullBtn").onclick = () => setFull(true);
   $("#exitFull").onclick = () => setFull(false);
   try {
     const blob = await f.entry.blob();
     if (S.readerKey !== key) return;
-    const typed = blob.type === "text/html" ? blob : new Blob([blob], { type: "text/html" });
-    blobUrl = URL.createObjectURL(typed);
-    $("#framebox iframe").src = blobUrl;
+    blobUrl = URL.createObjectURL(new Blob([FRAME_HEAD, blob], { type: "text/html;charset=utf-8" }));
+    const fr = $("#framebox iframe");
+    let loads = 0;   // a second load means the file navigated itself (blocked by frame-src): say so instead of a blank frame
+    fr.addEventListener("load", () => {
+      if (++loads < 2 || S.readerKey !== key) return;
+      revokeBlob();
+      $("#framebox").outerHTML = `<div class="state" id="frameLeft"><h2>This file tried to open a web page.</h2><p>It was stopped. Files here can't reach the internet.</p><button class="btn sm" id="reloadLeft">Reload</button></div>`;
+      $("#reloadLeft").onclick = () => { S.readerKey = ""; renderReader(new Set(), new Set()); };
+    });
+    fr.src = blobUrl;
   } catch (e) {
     view.querySelector(".framebox").outerHTML = `<div class="state"><h2>Couldn't show this file.</h2></div>`;
   }
@@ -1260,9 +1317,9 @@ function renderConnect() {
   $("#pane").hidden = false; $("#graphPane").hidden = true; $("#main").classList.remove("split");
   $("#view").innerHTML = `<div class="connect"><div class="logo" style="justify-content:center"><i>11</i></div>
     <h1>See what your AI team is doing.</h1>
-    <p>Open your project's folder, or the eleven folder inside it.</p>
-    <div class="stack">${saved ? `<button class="btn primary" id="cReconnect">Reconnect to ${esc(saved.name)}</button><button class="linkbtn" id="cOpen">Open another folder</button>`
-      : `<button class="btn primary" id="cOpen">Open folder</button>`}</div>
+    <p>Open the eleven folder in your project. Only that folder is read.</p>
+    <div class="stack">${saved ? `<button class="btn primary" id="cReconnect">Reconnect to ${esc(saved.name)}</button><button class="linkbtn" id="cOpen">Open another eleven folder</button>`
+      : `<button class="btn primary" id="cOpen">Open the eleven folder</button>`}</div>
     <p class="small muted">Files stay on this computer. Nothing is uploaded.</p>
     ${fsa ? "" : `<p class="small muted">This browser can't watch folders, so you get a snapshot. Use Chrome or Edge for live updates.</p>`}</div>`;
   $("#cOpen").onclick = openFolder;
@@ -1271,8 +1328,8 @@ function renderConnect() {
 function renderNoLedger() {
   $("#tree").innerHTML = ""; S.treeHtml = "";
   $("#graphPane").hidden = true; $("#pane").hidden = false;
-  $("#view").innerHTML = `<div class="connect"><h1>No eleven folder here.</h1><p>Pick the folder that contains eleven/, or install eleven first.</p>
-    <button class="btn primary" id="nlOpen">Open folder</button></div>`;
+  $("#view").innerHTML = `<div class="connect"><h1>No eleven folder here.</h1><p>Pick the eleven folder in your project, or install eleven first.</p>
+    <button class="btn primary" id="nlOpen">Open the eleven folder</button></div>`;
   $("#nlOpen").onclick = openFolder;
 }
 
@@ -1761,11 +1818,19 @@ try { S.openDirs = new Set(JSON.parse(store.get("eleven-open") || "[]")); } catc
     startSource(testSource());
     await new Promise((r) => setTimeout(r, 0));
   } else if ("showDirectoryPicker" in window) {
-    S.saved = await loadHandle();
-    if (S.saved) {
+    let rec = await loadHandle();
+    if (rec && !rec.h) {   // old format: a bare handle that may be the whole project (M3). Keep only its eleven/ part.
       let perm = "prompt";
-      try { perm = await S.saved.queryPermission({ mode: "read" }); } catch {}
-      if (perm === "granted") return startSource(fsaSource(S.saved));
+      try { perm = await rec.queryPermission({ mode: "read" }); } catch {}
+      await dropHandle();
+      if (perm !== "granted") rec = null;
+      else { const { root, name } = await fsaRoot(rec); S.saved = { h: root, name }; return startSource(fsaSource(root, name, S.saved)); }
+    }
+    S.saved = rec;
+    if (rec) {
+      let perm = "prompt";
+      try { perm = await rec.h.queryPermission({ mode: "read" }); } catch {}
+      if (perm === "granted") return startSource(fsaSource(rec.h, rec.name));
     }
     renderConnect();
   } else renderConnect();
