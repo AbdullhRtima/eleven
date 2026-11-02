@@ -1,304 +1,359 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+/* Before first paint: theme (eleven-theme; absent = auto), then the auto language redirect. ?theme= and ?motion=reduce are for captures and never saved. */
+(function () {
+  var d = document.documentElement, q = new URLSearchParams(location.search), t = q.get("theme");
+  try { if (t !== "light" && t !== "dark") t = localStorage.getItem("eleven-theme"); } catch (e) {}
+  if (t === "light" || t === "dark") d.setAttribute("data-theme", t);
+  if (q.get("motion") === "reduce") d.setAttribute("data-motion", "reduce");
+  d.classList.add("js");
+  /* Auto language (design.md §2), on / only: go to /ar/ if the saved choice is "ar", or if nothing is saved and the
+     browser's first language is Arabic. Never when ?lang=en is set, and never when storage can't be read. */
+  var p = location.pathname;
+  if ((p === "/" || p === "/index.html") && q.get("lang") !== "en") {
+    var saved, ok = true;
+    try { saved = localStorage.getItem("eleven-lang"); } catch (e) { ok = false; }
+    var first = (navigator.languages && navigator.languages[0]) || navigator.language || "";
+    if (ok && (saved === "ar" || (saved !== "en" && !saved && /^ar(-|$)/i.test(first)))) location.replace("/ar/" + location.search + location.hash);
+  }
+})();
+</script>
+<meta name="color-scheme" content="light dark">
 <title>eleven · your AI, organised into a team</title>
 <meta name="description" content="Open-source Markdown kit that turns your coding agent into an 11-role software team: product, design, architecture, engineering, QA, DevOps, security and docs, led by a CTO. Works with Claude Code, Codex, opencode and Cursor.">
+<link rel="canonical" href="https://eleven.rtima.org/">
+<link rel="alternate" hreflang="en" href="https://eleven.rtima.org/">
+<link rel="alternate" hreflang="ar" href="https://eleven.rtima.org/ar/">
+<link rel="alternate" hreflang="x-default" href="https://eleven.rtima.org/">
+<meta property="og:type" content="website">
 <meta property="og:title" content="eleven · your AI, organised into a team">
 <meta property="og:description" content="Eleven roles. One loop. Shared files. Drop one folder into any project.">
 <meta property="og:image" content="https://eleven.rtima.org/assets/ui-home-light.png">
 <meta property="og:url" content="https://eleven.rtima.org/">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236366f1'/%3E%3Ctext x='16' y='22' font-family='Arial' font-weight='700' font-size='15' fill='white' text-anchor='middle'%3E11%3C/text%3E%3C/svg%3E">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="ar_AR">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2316140F'/%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='%23FF8A5C' stroke-width='2'/%3E%3Cpath d='M13.5 10.5v11M18.5 10.5v11' stroke='%23F3EFE6' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-:root {
-  --bg: #ffffff; --bg-2: #f8fafc; --panel: #ffffff; --border: #e2e8f0; --text: #0f172a; --muted: #64748b;
-  --accent: #6366f1; --accent-2: #8b5cf6; --accent-soft: #eef2ff; --code-bg: #0f172a; --code-text: #e2e8f0; --ok: #059669;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #070b16; --bg-2: #0b1020; --panel: #111827; --border: #1f2a3d; --text: #e5e7eb; --muted: #94a3b8;
-    --accent: #818cf8; --accent-2: #a78bfa; --accent-soft: #1e1b4b; --code-bg: #0b1020; --code-text: #e2e8f0; --ok: #34d399;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #070b16; --bg-2: #0b1020; --panel: #111827; --border: #1f2a3d; --text: #e5e7eb; --muted: #94a3b8;
-  --accent: #818cf8; --accent-2: #a78bfa; --accent-soft: #1e1b4b; --code-bg: #0b1020; --code-text: #e2e8f0; --ok: #34d399;
-}
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 Inter, "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
-a { color: var(--accent); text-decoration: none; }
-code, pre { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; }
-.wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
-section { padding: 88px 0; }
-.alt { background: var(--bg-2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-.eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin: 0 0 12px; }
-h1, h2, h3 { letter-spacing: -.025em; line-height: 1.15; margin: 0; }
-h2 { font-size: clamp(28px, 4vw, 40px); margin-bottom: 14px; }
-.lead { color: var(--muted); font-size: 18px; max-width: 640px; margin: 0 0 40px; }
-
-nav { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(12px); background: color-mix(in srgb, var(--bg) 80%, transparent); border-bottom: 1px solid var(--border); }
-nav .wrap { display: flex; align-items: center; gap: 24px; height: 60px; }
-.logo { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 18px; color: var(--text); }
-.logo i { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; font-style: normal; font-size: 13px; }
-nav .links { display: flex; gap: 22px; margin-left: auto; font-size: 14px; }
-nav .links a { color: var(--muted); } nav .links a:hover { color: var(--text); }
-.btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: 10px; font-weight: 600; font-size: 15px; border: 1px solid var(--border); color: var(--text); background: var(--panel); white-space: nowrap; }
-.btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; border: 0; }
-.btn.sm { padding: 7px 14px; font-size: 14px; }
-.btn:hover { filter: brightness(1.08); }
-
-.hero { padding: 96px 0 64px; text-align: center; position: relative; overflow: hidden; }
-.hero::before { content: ""; position: absolute; inset: -40% -10% auto; height: 700px; background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 22%, transparent), transparent); pointer-events: none; }
-.hero .wrap { position: relative; }
-.pill { display: inline-flex; gap: 8px; align-items: center; padding: 5px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel); font-size: 13px; color: var(--muted); margin-bottom: 26px; }
-.pill b { color: var(--accent); }
-.hero h1 { font-size: clamp(40px, 7vw, 76px); font-weight: 800; letter-spacing: -.04em; }
-.grad { background: linear-gradient(135deg, var(--accent), var(--accent-2) 60%, #ec4899); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.hero p { font-size: clamp(17px, 2vw, 20px); color: var(--muted); max-width: 680px; margin: 22px auto 34px; }
-.cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-.shot { margin: 64px auto 0; max-width: 1040px; border-radius: 14px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 30px 80px -20px rgba(15, 23, 42, .45); }
-.shot img { display: block; width: 100%; height: auto; }
-.caption { font-size: 13px; color: var(--muted); margin-top: 14px; }
-
-.install { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.term { background: var(--code-bg); color: var(--code-text); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
-.term .bar { display: flex; align-items: center; gap: 6px; padding: 10px 14px; border-bottom: 1px solid #1f2a3d; font-size: 13px; color: #94a3b8; }
-.term .bar span { width: 10px; height: 10px; border-radius: 50%; background: #334155; }
-.term .bar em { margin-left: 8px; font-style: normal; }
-.term pre { margin: 0; padding: 18px; font-size: 13.5px; line-height: 1.7; overflow-x: auto; }
-.term .c { color: #64748b; } .term .p { color: #818cf8; }
-.say { margin-top: 20px; padding: 18px 20px; border-radius: 12px; border: 1px dashed var(--accent); background: var(--accent-soft); }
-.say code { font-size: 14px; }
-
-.loop { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; counter-reset: s; }
-.loop div { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 14px; position: relative; }
-.loop div::before { counter-increment: s; content: counter(s, decimal-leading-zero); font: 600 12px "JetBrains Mono", monospace; color: var(--accent); }
-.loop div.gate { border-color: var(--accent); }
-.loop h3 { font-size: 16px; margin: 6px 0 4px; }
-.loop p { font-size: 13px; color: var(--muted); margin: 0; }
-.guards { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
-.guards span { font-size: 13.5px; padding: 6px 12px; border-radius: 999px; background: var(--panel); border: 1px solid var(--border); color: var(--muted); }
-.guards b { color: var(--text); font-weight: 600; }
-
-.roles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-.role { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 20px; transition: transform .15s, border-color .15s; }
-.role:hover { transform: translateY(-2px); border-color: var(--accent); }
-.role .ic { font-size: 22px; }
-.role h3 { font-size: 16px; margin: 10px 0 6px; }
-.role p { margin: 0; font-size: 14px; color: var(--muted); }
-.role.lead { grid-column: span 2; background: linear-gradient(135deg, var(--accent-soft), var(--panel)); border-color: var(--accent); }
-.role.you { border-style: dashed; }
-
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
-.stat { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
-.stat strong { display: block; font-size: 44px; font-weight: 800; letter-spacing: -.03em; }
-.stat span { color: var(--muted); font-size: 14px; }
-.research { display: grid; grid-template-columns: 1.1fr 1fr; gap: 32px; align-items: start; }
-.research ul { margin: 0; padding-left: 20px; color: var(--muted); }
-.research li { margin-bottom: 10px; } .research li b { color: var(--text); }
-.note { font-size: 13.5px; color: var(--muted); border-left: 3px solid var(--accent); padding-left: 14px; }
-
-.features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.feat { padding: 22px; border-radius: 14px; border: 1px solid var(--border); background: var(--panel); }
-.feat h3 { font-size: 17px; margin-bottom: 8px; }
-.feat p { margin: 0; color: var(--muted); font-size: 14.5px; }
-
-.views { display: grid; grid-template-columns: 1fr 1fr; gap: 28px 24px; }
-.views figure { margin: 0; }
-.views figure.wide { grid-column: 1 / -1; }
-.views .shot { margin: 0 0 16px; max-width: none; box-shadow: 0 20px 50px -24px rgba(15, 23, 42, .4); }
-.views h3 { font-size: 17px; margin-bottom: 6px; }
-.views p { margin: 0; color: var(--muted); font-size: 14.5px; }
-
-.faq details { border-bottom: 1px solid var(--border); padding: 18px 0; }
-.faq summary { cursor: pointer; font-weight: 600; font-size: 17px; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
-.faq summary::after { content: "+"; color: var(--accent); font-size: 22px; line-height: 1; }
-.faq details[open] summary::after { content: "–"; }
-.faq p { color: var(--muted); margin: 12px 0 0; }
-
-.final { text-align: center; }
-.final h2 { font-size: clamp(32px, 5vw, 52px); }
-footer { border-top: 1px solid var(--border); padding: 32px 0; color: var(--muted); font-size: 14px; }
-footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; }
-
-@media (max-width: 960px) {
-  .loop { grid-template-columns: repeat(2, 1fr); }
-  .roles { grid-template-columns: repeat(2, 1fr); }
-  .install, .research, .features, .views { grid-template-columns: 1fr; }
-  .stats { grid-template-columns: 1fr; }
-}
-@media (max-width: 640px) {
-  section { padding: 64px 0; }
-  nav .links a.hide-sm { display: none; }
-  nav .wrap { gap: 12px; }
-  .roles { grid-template-columns: 1fr; } .role.lead { grid-column: auto; }
-  .loop { grid-template-columns: 1fr; }
-}
-</style>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@600&text=%D8%B9%D8%B1%D8%A8%D9%8A&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 
-<nav><div class="wrap">
-  <a class="logo" href="#"><i>11</i>eleven</a>
+<!-- Icon sprite: custom 24px line icons for the roles (no emoji). -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-cto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66"></path><path d="M20.2 3.6v4.2H16"></path><circle cx="12" cy="12" r="2.2"></circle></symbol>
+    <symbol id="i-product" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="3.5" width="15" height="17" rx="2.2"></rect><path d="M8 9.2l1.6 1.6 3-3.2M8 15.2l1.6 1.6 3-3.2M15 9.6h1.5M15 15.6h1.5"></path></symbol>
+    <symbol id="i-designer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18C6 9 18 9 20 18"></path><rect x="2.4" y="16.4" width="3.2" height="3.2" rx=".6"></rect><rect x="18.4" y="16.4" width="3.2" height="3.2" rx=".6"></rect><path d="M12 4v7.2M8.5 4.8h7"></path><circle cx="12" cy="12.4" r="1.2"></circle></symbol>
+    <symbol id="i-architect" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"></path><path d="M12 12l8-4.5M12 12L4 7.5M12 12v9"></path></symbol>
+    <symbol id="i-backend" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="2.7"></ellipse><path d="M5 6v12c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7V6"></path><path d="M5 12c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7"></path></symbol>
+    <symbol id="i-frontend" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14.5" rx="2.2"></rect><path d="M3 8.2h18"></path><path d="M11.5 11.5l5.5 2.2-2.4.9-.9 2.4z"></path></symbol>
+    <symbol id="i-mobile" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6.8" y="2.5" width="10.4" height="19" rx="2.6"></rect><path d="M10.8 18.4h2.4"></path></symbol>
+    <symbol id="i-qa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.6"></circle><path d="M15.4 15.4L21 21"></path><path d="M7.7 10.7l1.9 1.9 3.3-3.5"></path></symbol>
+    <symbol id="i-devops" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c-2-2.6-3.6-4-5.5-4a4 4 0 0 0 0 8c1.9 0 3.5-1.4 5.5-4zm0 0c2 2.6 3.6 4 5.5 4a4 4 0 0 0 0-8c-1.9 0-3.5 1.4-5.5 4z"></path></symbol>
+    <symbol id="i-security" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 2.9v5.6c0 4.4-3 8-7 9.5-4-1.5-7-5.1-7-9.5V5.9z"></path><circle cx="12" cy="10.8" r="1.8"></circle><path d="M12 12.6v3.2"></path></symbol>
+    <symbol id="i-writer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20V4h7.5M15.5 4v16"></path><path d="M11 4.2a4 4 0 1 0 0 8"></path></symbol>
+    <symbol id="i-you" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="8.4" r="3.6"></circle><path d="M4 20.5c.8-3.7 3.6-5.7 7-5.7 2.3 0 4.3.9 5.6 2.6"></path><path d="M19 13.5v5M16.5 16h5"></path></symbol>
+    <symbol id="i-gh" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.5 9.5 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.75c0 .27.18.58.69.48A10 10 0 0 0 12 2z"></path></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></symbol>
+  </defs>
+</svg>
+
+<nav class="top" aria-label="Main"><div class="wrap">
+  <a class="logo" href="#top" aria-label="eleven, home">
+    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle class="ring" cx="16" cy="16" r="12.5" stroke-width="1.6"></circle><path d="M13.2 9.5v13M18.8 9.5v13" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>
+    <span>eleven</span>
+  </a>
   <div class="links">
     <a class="hide-sm" href="#how">How it works</a>
     <a class="hide-sm" href="#team">Team</a>
     <a class="hide-sm" href="#research">Research</a>
-    <a href="/app/">Live UI</a>
+    <a class="hide-xs" href="/app/">Live UI</a>
     <a href="https://github.com/AbdullhRtima/eleven">GitHub</a>
+  </div>
+  <div class="tools">
+    <a class="tbtn lang" id="langLink" href="/ar/" hreflang="ar" lang="ar" title="اقرأ هذه الصفحة بالعربية">عربي</a>
+    <button class="tbtn" id="themeBtn" type="button" hidden=""></button>
   </div>
 </div></nav>
 
-<header class="hero"><div class="wrap">
-  <div class="pill"><b>Open source</b> · MIT · macOS, Windows, Linux</div>
-  <h1>Your AI,<br><span class="grad">organised into a team.</span></h1>
-  <p>Eleven roles, one loop, shared files. Drop one folder into any project and your coding agent works like a full software team: product, design, architecture, engineering, QA, DevOps, security and docs, led by a CTO.</p>
-  <div class="cta">
-    <a class="btn primary" href="#install">Get started</a>
-    <a class="btn" href="https://github.com/AbdullhRtima/eleven">★ Star on GitHub</a>
+<main id="main">
+<header class="hero" id="top">
+  <div class="stage" aria-hidden="false">
+    <canvas id="strings" role="img" aria-label="Animation: eleven vibrating strings braid into one loop, with the eleven roles placed around it."></canvas>
   </div>
-  <div class="shot"><img src="assets/ui-home-light.png" alt="The eleven live UI home: a file tree on the left and one card per item, with the item that waits on you first" width="1600" height="1000"></div>
-  <p class="caption">The live UI: what each item is doing now, and what waits on you.</p>
-</div></header>
-
-<section id="install" class="alt"><div class="wrap">
-  <p class="eyebrow">Install in a minute</p>
-  <h2>One folder. Invisible to git.</h2>
-  <p class="lead">eleven installs to <code>./eleven</code> in your project and hides itself with <code>.git/info/exclude</code>, so your repo and your teammates never see it. No dependencies, no server.</p>
-  <div class="install">
-    <div class="term"><div class="bar"><span></span><span></span><span></span><em>macOS · Linux</em></div>
-<pre><span class="c"># once</span>
-<span class="p">$</span> git clone https://github.com/AbdullhRtima/eleven ~/eleven
-
-<span class="c"># per project</span>
-<span class="p">$</span> ~/eleven/install.sh ~/code/my-app</pre></div>
-    <div class="term"><div class="bar"><span></span><span></span><span></span><em>Windows · PowerShell</em></div>
-<pre><span class="c"># once</span>
-<span class="p">&gt;</span> git clone https://github.com/AbdullhRtima/eleven $HOME\eleven
-
-<span class="c"># per project</span>
-<span class="p">&gt;</span> ~\eleven\install.ps1 C:\code\my-app</pre></div>
+  <div class="wrap">
+    <div class="hero-copy">
+      <p class="kicker"><b>Open source</b> · MIT · macOS, Windows, Linux</p>
+      <h1>Your AI,<br><em>organised into a team.</em></h1>
+      <p class="sub">Eleven roles, one loop, shared files. Drop one folder into any project and your coding agent works like a full software team: product, design, architecture, engineering, QA, DevOps, security and docs, led by a CTO.</p>
+      <div class="cta">
+        <a class="btn solid" href="#install"><span>Install in a minute</span><svg class="arr" aria-hidden="true"><use href="#i-arrow"></use></svg></a>
+        <a class="btn" href="https://github.com/AbdullhRtima/eleven"><svg aria-hidden="true"><use href="#i-gh"></use></svg><span>Star on GitHub</span></a>
+        <a class="tlink" href="/app/">Open the live UI</a>
+      </div>
+      <p class="facts"><span><b>11</b> roles</span><span><b>1</b> loop</span><span><b>0</b> servers</span></p>
+    </div>
   </div>
-  <div class="say">Then tell Claude Code, Codex, opencode or Cursor:<br>
-    <code>Read eleven/AGENTS.md and act as the CTO. New item 001: &lt;your idea&gt;. Start at step 0.</code></div>
-</div></section>
+  <p class="fig"><b>Fig. 1</b>Eleven strings, one loop. M-theory needs eleven dimensions to unify five string theories. eleven unifies eleven roles into one team.</p>
+</header>
 
-<section id="how"><div class="wrap">
-  <p class="eyebrow">How it works</p>
-  <h2>A loop, not a long chat.</h2>
-  <p class="lead">Long chats rot: context fills with noise and the model forgets its own decisions. eleven gives each task a fresh agent and keeps memory in a small, rewritten set of files called the ledger.</p>
-  <div class="loop">
-    <div class="gate"><h3>Intake</h3><p>Product writes a brief with testable criteria. <b>You approve.</b></p></div>
-    <div><h3>Plan</h3><p>The CTO writes a short strategy and seed tasks.</p></div>
-    <div><h3>Explore</h3><p>The architect maps the hard part, the options and the pitfalls. No code yet.</p></div>
-    <div><h3>Manage</h3><p>The CTO picks exactly one next task for one role.</p></div>
-    <div><h3>Execute</h3><p>A fresh agent does that task and files a report with evidence.</p></div>
-    <div><h3>Verify</h3><p>QA checks every criterion. A red check beats any "done".</p></div>
-    <div class="gate"><h3>Ship</h3><p>Merge and release small and often. <b>You accept.</b></p></div>
-  </div>
-  <div class="guards">
-    <span><b>10</b> round budget</span><span><b>No-progress</b> stop</span><span>plan.md <b>≤ 4k</b> chars</span><span>notes.md <b>≤ 8k</b> chars, rewritten</span><span><b>Open questions</b> pause for you</span><span><b>One task</b> per fresh context</span>
-  </div>
-</div></section>
-
-<section id="see" style="border-top:1px solid var(--border)"><div class="wrap">
-  <p class="eyebrow">The live UI</p>
-  <h2>See your team work.</h2>
-  <p class="lead">Open your project folder in the browser. The page reads the ledger while your agents write it. Files stay on your computer.</p>
-  <div class="views">
-    <figure class="wide">
-      <div class="shot"><img src="assets/ui-graph-light.png" alt="The work graph: the project, its items, each item's tasks coloured by status, and the reports, design files and decisions they produced" width="1600" height="1000" loading="lazy"></div>
-      <figcaption><h3>Project → items → tasks → outputs</h3><p>The work graph shows every task, coloured by status, with the reports, designs and decisions it produced. Click any node to open it.</p></figcaption>
-    </figure>
-    <figure>
-      <div class="shot"><img src="assets/ui-home-light.png" alt="Home: one card per item; the item waiting on you comes first, in amber, with its open questions folded" width="1600" height="1000" loading="lazy"></div>
-      <figcaption><h3>What's happening, what waits on you</h3><p>One card per item. Items that wait on you come first, in amber, with their open questions folded away.</p></figcaption>
-    </figure>
-    <figure>
-      <div class="shot"><img src="assets/ui-reader-graph-dark.png" alt="Dark theme: the file tree, a report open in the reader, and the work graph beside it" width="1600" height="1000" loading="lazy"></div>
-      <figcaption><h3>Read it like Obsidian</h3><p>A file tree on the left, the doc in the middle, the graph beside it. Paths in a doc are links. Light and dark.</p></figcaption>
-    </figure>
-  </div>
-</div></section>
-
-<section id="team" class="alt"><div class="wrap">
-  <p class="eyebrow">The team</p>
-  <h2>Eleven roles. You're the CEO.</h2>
-  <p class="lead">Each role is one short Markdown file: what it does, what it never does, and when it's done. Not every task needs everyone. A bug fix is just CTO → engineer → QA.</p>
-  <div class="roles">
-    <div class="role lead"><div class="ic">🧭</div><h3>CTO</h3><p>Runs the loop. Plans, picks the next task and role, merges, ships, and enforces the guards.</p></div>
-    <div class="role"><div class="ic">📋</div><h3>Product manager</h3><p>Brief, scope, non-goals, testable acceptance criteria.</p></div>
-    <div class="role"><div class="ic">🎨</div><h3>Designer</h3><p>Flows, screens, every state, real copy, accessibility.</p></div>
-    <div class="role"><div class="ic">🏛️</div><h3>Architect</h3><p>The core difficulty, the approaches, interfaces and decision records.</p></div>
-    <div class="role"><div class="ic">⚙️</div><h3>Backend</h3><p>APIs, domain logic, data, safe migrations. Test-first.</p></div>
-    <div class="role"><div class="ic">🖥️</div><h3>Frontend</h3><p>Web UI built to design in every state, accessible and fast.</p></div>
-    <div class="role"><div class="ic">📱</div><h3>Mobile</h3><p>iOS and Android: offline, app lifecycle, permissions.</p></div>
-    <div class="role"><div class="ic">🧪</div><h3>QA</h3><p>Verifies every criterion with evidence. Can veto "done".</p></div>
-    <div class="role"><div class="ic">🚀</div><h3>DevOps</h3><p>CI, deploys, rollback, observability.</p></div>
-    <div class="role"><div class="ic">🛡️</div><h3>Security</h3><p>Threat models and reviews. High severity blocks shipping.</p></div>
-    <div class="role"><div class="ic">✍️</div><h3>Tech writer</h3><p>README, docs and changelog that match what shipped.</p></div>
-    <div class="role you"><div class="ic">👤</div><h3>You</h3><p>Approve the brief, answer questions, accept the result.</p></div>
-  </div>
-</div></section>
-
-<section id="research"><div class="wrap">
-  <p class="eyebrow">Built on research</p>
-  <h2>Organisation beats raw model size.</h2>
-  <p class="lead">eleven's loop comes from <a href="https://arxiv.org/abs/2608.26480">GVS5H</a> (Gao et al., 2026): one model, split into a manager and fresh single-task workers that coordinate through files on disk.</p>
-  <div class="stats">
-    <div class="stat"><strong>+25.6</strong><span>points on hard LiveCodeBench problems for Qwen3.8-27B (66.8 → 92.4)</span></div>
-    <div class="stat"><strong>93.0 vs 90.4</strong><span>an orchestrated cheap model beat a frontier model…</span></div>
-    <div class="stat"><strong>~9%</strong><span>…at about 9% of the cost</span></div>
-  </div>
-  <div class="research">
+<div class="tape" aria-hidden="true" dir="ltr" data-live="">
+  <div class="track">
     <ul>
+      <li><i>brief.md</i> <span class="ok">Status: approved</span></li>
+      <li><i>plan.md</i> 1,284 / 4,000</li>
+      <li><i>tasks.md</i> <span class="nx">Round 4 / 10 · NEXT #4 frontend</span></li>
+      <li><i>notes.md</i> 6,912 / 8,000 · rewritten</li>
+      <li><i>reports/03-backend.md</i> <span class="ok">Result: done</span></li>
+      <li><i>reports/04-frontend.md</i> <span class="nx">in progress</span></li>
+      <li><i>decisions/0001-crdt-for-sync.md</i></li>
+      <li><i>003-team-workspaces/brief.md</i> <span class="wt">waiting on you</span></li>
+      <li><i>reports/05-qa.md</i> <span class="ok">42 passed</span></li>
+    </ul>
+    <ul>
+      <li><i>brief.md</i> <span class="ok">Status: approved</span></li>
+      <li><i>plan.md</i> 1,284 / 4,000</li>
+      <li><i>tasks.md</i> <span class="nx">Round 4 / 10 · NEXT #4 frontend</span></li>
+      <li><i>notes.md</i> 6,912 / 8,000 · rewritten</li>
+      <li><i>reports/03-backend.md</i> <span class="ok">Result: done</span></li>
+      <li><i>reports/04-frontend.md</i> <span class="nx">in progress</span></li>
+      <li><i>decisions/0001-crdt-for-sync.md</i></li>
+      <li><i>003-team-workspaces/brief.md</i> <span class="wt">waiting on you</span></li>
+      <li><i>reports/05-qa.md</i> <span class="ok">42 passed</span></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================================================ install -->
+<section id="install"><div class="wrap">
+  <div class="head">
+    <div data-reveal="">
+      <p class="eyebrow"><span class="n">01</span><span>Install in a minute</span></p>
+      <h2>One folder.<br><em>Invisible to git.</em></h2>
+    </div>
+    <p class="lead" data-reveal="" style="--d:.1s">eleven installs to <code>./eleven</code> in your project and hides itself with <code>.git/info/exclude</code>, so your repo and your teammates never see it. No dependencies, no server.</p>
+  </div>
+  <div class="install">
+    <ol class="steps-mini" data-reveal="">
+      <li><h3>Clone the kit once</h3><p>One copy on your machine serves every project.</p></li>
+      <li><h3>Install into a project</h3><p>Copies <code>eleven/</code> in and hides it from git. Run it again any time; <code>--update</code> never touches your work.</p></li>
+      <li><h3>Tell your agent to lead</h3><p>Claude Code, Codex, opencode, Cursor: anything that reads <code>AGENTS.md</code>.</p></li>
+    </ol>
+    <div data-reveal="" style="--d:.12s">
+      <div class="term" dir="ltr" data-live="" id="term">
+        <div class="bar">
+          <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <div role="tablist" aria-label="Choose your system">
+            <button role="tab" id="tab-unix" aria-selected="true" aria-controls="termOut" data-os="unix">macOS · Linux</button>
+            <button role="tab" id="tab-win" aria-selected="false" aria-controls="termOut" data-os="win" tabindex="-1">Windows · PowerShell</button>
+          </div>
+          <button class="replay" type="button" id="replay" aria-label="Replay" title="Replay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.6-6.4"></path><path d="M3 3.5v5h5"></path></svg></button>
+        </div>
+        <pre id="termOut" role="tabpanel" aria-labelledby="tab-unix" tabindex="0"></pre>
+      </div>
+      <div class="say">
+        <p>Then tell Claude Code, Codex, opencode or Cursor:</p>
+        <code id="prompt">Read eleven/AGENTS.md and act as the CTO. New item 001: &lt;your idea&gt;. Start at step 0.</code>
+        <button class="copy" type="button" id="copyBtn" aria-label="Copy the prompt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path></svg><span>Copy</span></button>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============================================================ how -->
+<section id="how" class="rule"><div class="wrap">
+  <div class="head">
+    <div data-reveal="">
+      <p class="eyebrow"><span class="n">02</span><span>How it works</span></p>
+      <h2>A loop,<br><em>not a long chat.</em></h2>
+    </div>
+    <p class="lead" data-reveal="" style="--d:.1s">Long chats rot: context fills with noise and the model forgets its own decisions. eleven gives each task a fresh agent and keeps memory in a small, rewritten set of files called the ledger.</p>
+  </div>
+  <figure class="loopfig" data-live="" data-reveal="" id="loopfig"><!-- built by JS --></figure>
+  <ol class="steps" id="steps" data-reveal="">
+    <li data-st="I"><span class="num">01</span><h3>Intake</h3><span class="who">product</span><p>Product writes a brief with testable criteria. <b>You approve.</b></p><span class="tag">Gate</span></li>
+    <li data-st="P"><span class="num">02</span><h3>Plan</h3><span class="who">cto</span><p>The CTO writes a short strategy and seed tasks.</p><span></span></li>
+    <li data-st="E"><span class="num">03</span><h3>Explore</h3><span class="who">architect</span><p>The architect maps the hard part, the options and the pitfalls. No code yet.</p><span></span></li>
+    <li data-st="M"><span class="num">04</span><h3>Manage</h3><span class="who">cto</span><p>The CTO picks exactly one next task for one role.</p><span></span></li>
+    <li data-st="X"><span class="num">05</span><h3>Execute</h3><span class="who">any role</span><p>A fresh agent does that task and files a report with evidence.</p><span></span></li>
+    <li data-st="V"><span class="num">06</span><h3>Verify</h3><span class="who">qa</span><p>QA checks every criterion. A red check beats any "done".</p><span></span></li>
+    <li data-st="S"><span class="num">07</span><h3>Ship</h3><span class="who">cto</span><p>Merge and release small and often. <b>You accept.</b></p><span class="tag">Gate</span></li>
+  </ol>
+  <div class="guards" data-reveal="">
+    <h3>Guards</h3>
+    <ul>
+      <li><b>10</b> round budget</li><li><b>No-progress</b> stop</li><li>plan.md <b>≤ 4k</b> chars</li><li>notes.md <b>≤ 8k</b> chars, rewritten</li><li><b>Open questions</b> pause for you</li><li><b>One task</b> per fresh context</li>
+    </ul>
+  </div>
+</div></section>
+
+<!-- ============================================================ team -->
+<section id="team" class="rule"><div class="wrap">
+  <div class="head">
+    <div data-reveal="">
+      <p class="eyebrow"><span class="n">03</span><span>The team</span></p>
+      <h2>Eleven roles.<br><em>You're the CEO.</em></h2>
+    </div>
+    <p class="lead" data-reveal="" style="--d:.1s">Each role is one short Markdown file: what it does, what it never does, and when it's done. Not every task needs everyone. A bug fix is just CTO → engineer → QA.</p>
+  </div>
+  <div class="team">
+    <div class="constel" data-live="" data-reveal="">
+      <svg id="constel" viewBox="-70 -14 540 492" role="img" aria-label="The CTO in the centre hands tasks to the ten other roles. You sit above the CTO."></svg>
+      <p class="status" aria-hidden="true" id="status"><span>tasks.md</span> <b>#1 NEXT → product</b></p>
+    </div>
+    <ul class="roles" id="roles" data-reveal="" style="--d:.1s">
+      <li class="lead" data-r="cto"><svg aria-hidden="true"><use href="#i-cto"></use></svg><h3><span>CTO</span><small>lead</small></h3><p>Runs the loop. Plans, picks the next task and role, merges, ships, and enforces the guards.</p></li>
+      <li data-r="product"><svg aria-hidden="true"><use href="#i-product"></use></svg><h3><span>Product manager</span></h3><p>Brief, scope, non-goals, testable acceptance criteria.</p></li>
+      <li data-r="designer"><svg aria-hidden="true"><use href="#i-designer"></use></svg><h3><span>Designer</span></h3><p>Flows, screens, every state, real copy, accessibility.</p></li>
+      <li data-r="architect"><svg aria-hidden="true"><use href="#i-architect"></use></svg><h3><span>Architect</span></h3><p>The core difficulty, the approaches, interfaces and decision records.</p></li>
+      <li data-r="backend"><svg aria-hidden="true"><use href="#i-backend"></use></svg><h3><span>Backend</span></h3><p>APIs, domain logic, data, safe migrations. Test-first.</p></li>
+      <li data-r="frontend"><svg aria-hidden="true"><use href="#i-frontend"></use></svg><h3><span>Frontend</span></h3><p>Web UI built to design in every state, accessible and fast.</p></li>
+      <li data-r="mobile"><svg aria-hidden="true"><use href="#i-mobile"></use></svg><h3><span>Mobile</span></h3><p>iOS and Android: offline, app lifecycle, permissions.</p></li>
+      <li data-r="qa"><svg aria-hidden="true"><use href="#i-qa"></use></svg><h3><span>QA</span></h3><p>Verifies every criterion with evidence. Can veto "done".</p></li>
+      <li data-r="devops"><svg aria-hidden="true"><use href="#i-devops"></use></svg><h3><span>DevOps</span></h3><p>CI, deploys, rollback, observability.</p></li>
+      <li data-r="security"><svg aria-hidden="true"><use href="#i-security"></use></svg><h3><span>Security</span></h3><p>Threat models and reviews. High severity blocks shipping.</p></li>
+      <li data-r="writer"><svg aria-hidden="true"><use href="#i-writer"></use></svg><h3><span>Tech writer</span></h3><p>README, docs and changelog that match what shipped.</p></li>
+      <li class="you" data-r="you"><svg aria-hidden="true"><use href="#i-you"></use></svg><h3><span>You</span><small>CEO</small></h3><p>Approve the brief, answer questions, accept the result.</p></li>
+    </ul>
+  </div>
+</div></section>
+
+<!-- ============================================================ see -->
+<section id="see" class="rule" style="background:var(--bg-2)"><div class="wrap">
+  <div class="head">
+    <div data-reveal="">
+      <p class="eyebrow"><span class="n">04</span><span>The live UI</span></p>
+      <h2>See your team<br><em>work.</em></h2>
+    </div>
+    <p class="lead" data-reveal="" style="--d:.1s">Open your project folder in the browser. The page reads the ledger while your agents write it. Files stay on your computer.</p>
+  </div>
+  <div class="desk" id="desk" data-live="" data-reveal="">
+    <div class="tilt">
+      <figure class="win a" data-w="1"><div class="chrome" aria-hidden="true"><i></i><i></i><i></i><span>eleven.rtima.org/app</span></div><img class="lt" src="assets/ui-graph-light.png" width="1600" height="1000" loading="lazy" alt="The work graph: the project, its items, each item's tasks coloured by status, and the reports, design files and decisions they produced"><img class="dk" src="assets/ui-graph-dark.png" width="1600" height="1000" loading="lazy" alt="The work graph: the project, its items, each item's tasks coloured by status, and the reports, design files and decisions they produced"><span class="mk" aria-hidden="true">1</span></figure>
+      <figure class="win b" data-w="2"><div class="chrome" aria-hidden="true"><i></i><i></i><i></i><span>eleven.rtima.org/app</span></div><img class="lt" src="assets/ui-home-light.png" width="1600" height="1000" loading="lazy" alt="Home: one card per item; the item waiting on you comes first, in amber, with its open questions folded"><img class="dk" src="assets/ui-home-dark.png" width="1600" height="1000" loading="lazy" alt="Home: one card per item; the item waiting on you comes first, in amber, with its open questions folded"><span class="mk" aria-hidden="true">2</span></figure>
+      <figure class="win c" data-w="3"><div class="chrome" aria-hidden="true"><i></i><i></i><i></i><span>eleven.rtima.org/app</span></div><img class="lt" src="assets/ui-reader-light.png" width="1600" height="1000" loading="lazy" alt="The reader: the file tree, a report open in the middle, and the work graph beside it"><img class="dk" src="assets/ui-reader-dark.png" width="1600" height="1000" loading="lazy" alt="The reader: the file tree, a report open in the middle, and the work graph beside it"><span class="mk" aria-hidden="true">3</span></figure>
+    </div>
+  </div>
+  <div class="caps">
+    <div data-w="1" data-reveal=""><span class="n">1</span><h3>Project → items → tasks → outputs</h3><p>The work graph shows every task, coloured by status, with the reports, designs and decisions it produced. Click any node to open it.</p></div>
+    <div data-w="2" data-reveal="" style="--d:.08s"><span class="n">2</span><h3>What's happening, what waits on you</h3><p>One card per item. Items that wait on you come first, in amber, with their open questions folded away.</p></div>
+    <div data-w="3" data-reveal="" style="--d:.16s"><span class="n">3</span><h3>Read it like Obsidian</h3><p>A file tree on the left, the doc in the middle, the graph beside it. Paths in a doc are links. Light and dark.</p></div>
+  </div>
+  <p class="see-foot"><a class="btn" href="/app/"><span>Open the live UI</span><svg class="arr" aria-hidden="true"><use href="#i-arrow"></use></svg></a></p>
+</div></section>
+
+<!-- ============================================================ research -->
+<section id="research" class="rule"><div class="wrap">
+  <div class="head">
+    <div data-reveal="">
+      <p class="eyebrow"><span class="n">05</span><span>Built on research</span></p>
+      <h2>Organisation beats<br><em>raw model size.</em></h2>
+    </div>
+    <p class="lead" data-reveal="" style="--d:.1s">eleven's loop comes from <a href="https://arxiv.org/abs/2608.26480">GVS5H</a> (Gao et al., 2026): one model, split into a manager and fresh single-task workers that coordinate through files on disk.</p>
+  </div>
+  <div class="results">
+    <div class="res" data-reveal="">
+      <div class="big" dir="ltr"><span class="count" data-to="25.6" data-dec="1" data-pre="+">+25.6</span></div>
+      <p>points on hard LiveCodeBench problems for <bdi>Qwen3.8-27B</bdi>.</p>
+      <div class="meter" role="img" aria-label="Qwen3.8-27B alone: 66.8. In the loop: 92.4.">
+        <div class="row"><span>Alone</span><b>66.8</b><div class="trk"><div class="fill" style="--w:66.8%"></div></div></div>
+        <div class="row"><span>In the loop</span><b>92.4</b><div class="trk"><div class="fill hi" style="--w:92.4%"></div></div></div>
+      </div>
+    </div>
+    <div class="res" data-reveal="">
+      <div class="big" dir="ltr"><span class="count" data-to="93.0" data-dec="1">93.0</span><small>vs</small><span class="count" data-to="90.4" data-dec="1">90.4</span></div>
+      <p>An orchestrated cheap model beat a frontier model…</p>
+      <div class="meter" role="img" aria-label="Orchestrated cheap model: 93.0. Frontier model: 90.4.">
+        <div class="row"><span>Orchestrated cheap model</span><b>93.0</b><div class="trk"><div class="fill hi" style="--w:93%"></div></div></div>
+        <div class="row"><span>Frontier model</span><b>90.4</b><div class="trk"><div class="fill" style="--w:90.4%"></div></div></div>
+      </div>
+    </div>
+    <div class="res" data-reveal="">
+      <div class="big" dir="ltr"><span class="count" data-to="9" data-dec="0" data-pre="~" data-suf="%">~9%</span></div>
+      <p>…at about 9% of the cost.</p>
+      <div class="meter" role="img" aria-label="Cost: frontier model 100%, orchestrated model about 9%.">
+        <div class="row"><span>Frontier model cost</span><b>100%</b><div class="trk"><div class="fill" style="--w:100%"></div></div></div>
+        <div class="row"><span>Orchestrated</span><b>~9%</b><div class="trk"><div class="fill hi" style="--w:9%"></div></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="principles">
+    <ol data-reveal="">
       <li><b>Decomposition:</b> one task per call keeps every agent focused.</li>
       <li><b>Persistent context:</b> the ledger outlives any single conversation.</li>
       <li><b>Reasoning on disk before code:</b> notes first, then implementation.</li>
       <li><b>Verifier override:</b> a failing test beats a confident "done".</li>
-    </ul>
-    <p class="note">To be fair about it: the scaffold uses about 3× the tokens of a single call, strong models gain least, and some configurations got worse. eleven adds the roles a real product needs (design, security, DevOps, docs) and keeps you at every gate.</p>
+    </ol>
+    <div data-reveal="" style="--d:.1s">
+      <p class="fair"><strong>To be fair about it</strong><span>The scaffold uses about 3× the tokens of a single call, strong models gain least, and some configurations got worse. eleven adds the roles a real product needs (design, security, DevOps, docs) and keeps you at every gate.</span></p>
+      <p class="cite">Source: Gao et al., 2026, <a href="https://arxiv.org/abs/2608.26480">arXiv:2608.26480</a></p>
+    </div>
   </div>
 </div></section>
 
-<section class="alt"><div class="wrap">
-  <p class="eyebrow">Why eleven</p>
-  <h2>Small enough to read. Strict enough to trust.</h2>
-  <p class="lead">The whole kit is about 25 Markdown files. Read it in fifteen minutes, then change anything.</p>
-  <div class="features">
-    <div class="feat"><h3>Works with your agent</h3><p>Claude Code, Codex, opencode, Cursor: anything that reads AGENTS.md. No lock-in, no framework.</p></div>
-    <div class="feat"><h3>Live UI in the browser</h3><p>Open your project at <a href="/app/">eleven.rtima.org/app</a> or locally: a file tree, a reader for every doc, and a work graph. It updates every 2 seconds and nothing is uploaded.</p></div>
-    <div class="feat"><h3>Waiting on you, first</h3><p>When the next step is yours, that item's card comes first, in amber: one line on what to do, with the open questions folded underneath.</p></div>
-    <div class="feat"><h3>Evidence, not vibes</h3><p>Every report pastes the real build and test output. QA re-runs it.</p></div>
-    <div class="feat"><h3>Decisions on record</h3><p>Expensive choices get a one-page record, so nobody re-argues them next month.</p></div>
-    <div class="feat"><h3>Cross-platform</h3><p>install.sh for macOS and Linux, install.ps1 for Windows. Safe re-installs; <code>--update</code> never touches your work.</p></div>
+<!-- ============================================================ why -->
+<section id="why" class="rule"><div class="wrap">
+  <div class="head">
+    <div data-reveal="">
+      <p class="eyebrow"><span class="n">06</span><span>Why eleven</span></p>
+      <h2>Small enough to read.<br><em>Strict enough to trust.</em></h2>
+    </div>
+    <p class="lead" data-reveal="" style="--d:.1s">The whole kit is about 25 Markdown files. Read it in fifteen minutes, then change anything.</p>
+  </div>
+  <div class="why">
+    <div data-reveal=""><span class="path">AGENTS.md</span><h3>Works with your agent</h3><p>Claude Code, Codex, opencode, Cursor: anything that reads AGENTS.md. No lock-in, no framework.</p></div>
+    <div data-reveal="" style="--d:.06s"><span class="path">/app</span><h3>Live UI in the browser</h3><p>Open your project at <a href="/app/">eleven.rtima.org/app</a> or locally: a file tree, a reader for every doc, and a work graph. It updates every 2 seconds and nothing is uploaded.</p></div>
+    <div data-reveal=""><span class="path">ui/ → Home</span><h3>Waiting on you, first</h3><p>When the next step is yours, that item's card comes first, in amber: one line on what to do, with the open questions folded underneath.</p></div>
+    <div data-reveal="" style="--d:.06s"><span class="path">reports/</span><h3>Evidence, not vibes</h3><p>Every report pastes the real build and test output. QA re-runs it.</p></div>
+    <div data-reveal=""><span class="path">decisions/</span><h3>Decisions on record</h3><p>Expensive choices get a one-page record, so nobody re-argues them next month.</p></div>
+    <div data-reveal="" style="--d:.06s"><span class="path">install.sh<br>install.ps1</span><h3>Cross-platform</h3><p>install.sh for macOS and Linux, install.ps1 for Windows. Safe re-installs; <code>--update</code> never touches your work.</p></div>
   </div>
 </div></section>
 
-<section class="faq"><div class="wrap" style="max-width:780px">
-  <p class="eyebrow">FAQ</p>
-  <h2>Questions</h2>
-  <details><summary>Does it cost more tokens?</summary><p>Yes, often about 3× a single chat for a full loop. You buy fewer reworks, fewer surprises and a written trail of why. For tiny fixes, skip roles: CTO → engineer → QA.</p></details>
-  <details><summary>Does my code or ledger go anywhere?</summary><p>No. eleven is just files in your project. The live UI reads your folder in your browser through the File System Access API; nothing is uploaded.</p></details>
-  <details><summary>Which browsers support the live UI?</summary><p>Chrome and Edge give live updates. Firefox and Safari open a snapshot; pick the folder again to refresh it. Either way the files stay in your browser and nothing is uploaded. HTML files from the ledger open in a sandboxed frame.</p></details>
-  <details><summary>Will my teammates see it?</summary><p>No. It's excluded through <code>.git/info/exclude</code>, which is local to your clone. To share the ledger with your team, remove that line and commit <code>eleven/work</code>.</p></details>
-  <details><summary>Can I change the roles?</summary><p>Please do. When an agent repeats a mistake, add a line to its role file. That's how your team learns.</p></details>
+<!-- ============================================================ faq -->
+<section id="faq" class="rule"><div class="wrap faq">
+  <div data-reveal="">
+    <p class="eyebrow"><span class="n">07</span><span>FAQ</span></p>
+    <h2>Questions,<br><em>answered.</em></h2>
+  </div>
+  <div data-reveal="" style="--d:.1s">
+    <details><summary><span class="q">Q1</span><h3>Does it cost more tokens?</h3><span class="x" aria-hidden="true"></span></summary><p>Yes, often about 3× a single chat for a full loop. You buy fewer reworks, fewer surprises and a written trail of why. For tiny fixes, skip roles: CTO → engineer → QA.</p></details>
+    <details><summary><span class="q">Q2</span><h3>Does my code or ledger go anywhere?</h3><span class="x" aria-hidden="true"></span></summary><p>No. eleven is just files in your project. The live UI reads your folder in your browser through the File System Access API; nothing is uploaded.</p></details>
+    <details><summary><span class="q">Q3</span><h3>Which browsers support the live UI?</h3><span class="x" aria-hidden="true"></span></summary><p>Chrome and Edge give live updates. Firefox and Safari open a snapshot; pick the folder again to refresh it. Either way the files stay in your browser and nothing is uploaded. HTML files from the ledger open in a sandboxed frame.</p></details>
+    <details><summary><span class="q">Q4</span><h3>Will my teammates see it?</h3><span class="x" aria-hidden="true"></span></summary><p>No. It's excluded through <code>.git/info/exclude</code>, which is local to your clone. To share the ledger with your team, remove that line and commit <code>eleven/work</code>.</p></details>
+    <details><summary><span class="q">Q5</span><h3>Can I change the roles?</h3><span class="x" aria-hidden="true"></span></summary><p>Please do. When an agent repeats a mistake, add a line to its role file. That's how your team learns.</p></details>
+  </div>
 </div></section>
 
-<section class="final alt"><div class="wrap">
-  <h2>Stop chatting. <span class="grad">Start leading.</span></h2>
-  <p class="lead" style="margin:16px auto 32px">Give your agent a team, a loop and a definition of done.</p>
-  <div class="cta"><a class="btn primary" href="#install">Install eleven</a><a class="btn" href="/app/">Open the live UI</a></div>
-</div></section>
+<!-- ============================================================ final -->
+<section class="final rule" data-live="" id="final">
+  <svg class="harp" id="harp" viewBox="0 0 1200 500" preserveAspectRatio="none" aria-hidden="true"></svg>
+  <div class="wrap">
+    <h2 data-reveal="">Stop chatting.<br><em>Start leading.</em></h2>
+    <p data-reveal="" style="--d:.1s">Give your agent a team, a loop and a definition of done.</p>
+    <div class="cta" data-reveal="" style="--d:.18s">
+      <a class="btn solid" href="#install"><span>Install eleven</span><svg class="arr" aria-hidden="true"><use href="#i-arrow"></use></svg></a>
+      <a class="btn" href="/app/">Open the live UI</a>
+    </div>
+  </div>
+</section>
+</main>
 
 <footer><div class="wrap">
   <span><b>eleven</b>: M-theory needs eleven dimensions to unify everything.</span>
   <span>MIT · <a href="https://github.com/AbdullhRtima/eleven">GitHub</a> · <a href="https://rtima.org">rtima.org</a></span>
 </div></footer>
 
+<script>window.ELEVEN_T = {"ring.sub": "roles · one loop", "term.once": "# once", "term.per": "# per project", "copy": "Copy", "copied": "Copied", "gate.approve": "You approve", "gate.accept": "You accept", "loop.back": "red check → back to Manage", "loop.round": "Round", "loop.aria": "Diagram of the loop: Intake, Plan and Explore lead into a cycle of Manage, Execute and Verify that repeats until QA passes, at most 10 rounds, then Ship. Intake and Ship are gates that wait for you.", "theme.auto": "Theme: auto (follows your system). Switch to light", "theme.light": "Theme: light. Switch to dark", "theme.dark": "Theme: dark. Switch to auto", "st.I": "Intake", "st.P": "Plan", "st.E": "Explore", "st.M": "Manage", "st.X": "Execute", "st.V": "Verify", "st.S": "Ship"};</script>
+<script src="assets/site.js"></script>
 </body>
 </html>

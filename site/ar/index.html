@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+/* Before first paint: theme (eleven-theme; absent = auto). ?theme= and ?motion=reduce are for captures and never saved. */
+(function () {
+  var d = document.documentElement, q = new URLSearchParams(location.search), t = q.get("theme");
+  try { if (t !== "light" && t !== "dark") t = localStorage.getItem("eleven-theme"); } catch (e) {}
+  if (t === "light" || t === "dark") d.setAttribute("data-theme", t);
+  if (q.get("motion") === "reduce") d.setAttribute("data-motion", "reduce");
+  d.classList.add("js");
+})();
+</script>
+<meta name="color-scheme" content="light dark">
+<title>eleven · ذكاؤك الاصطناعي، يعمل كفريق</title>
+<meta name="description" content="حزمة Markdown مفتوحة المصدر تحوّل وكيل البرمجة لديك إلى فريق برمجيات من 11 دورًا: المنتج والتصميم والمعمارية والتطوير وضمان الجودة وDevOps والأمن والتوثيق، بقيادة CTO. تعمل مع Claude Code وCodex وopencode وCursor.">
+<link rel="canonical" href="https://eleven.rtima.org/ar/">
+<link rel="alternate" hreflang="en" href="https://eleven.rtima.org/">
+<link rel="alternate" hreflang="ar" href="https://eleven.rtima.org/ar/">
+<link rel="alternate" hreflang="x-default" href="https://eleven.rtima.org/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="eleven · ذكاؤك الاصطناعي، يعمل كفريق">
+<meta property="og:description" content="أحد عشر دورًا. حلقة عمل واحدة. ملفات مشتركة. ضع مجلدًا واحدًا في أي مشروع.">
+<meta property="og:image" content="https://eleven.rtima.org/assets/ui-home-light.png">
+<meta property="og:url" content="https://eleven.rtima.org/ar/">
+<meta property="og:locale" content="ar_AR">
+<meta property="og:locale:alternate" content="en_US">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2316140F'/%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='%23FF8A5C' stroke-width='2'/%3E%3Cpath d='M13.5 10.5v11M18.5 10.5v11' stroke='%23F3EFE6' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Amiri:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">تخطَّ إلى المحتوى</a>
+
+<!-- Icon sprite: custom 24px line icons for the roles (no emoji). -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-cto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66"></path><path d="M20.2 3.6v4.2H16"></path><circle cx="12" cy="12" r="2.2"></circle></symbol>
+    <symbol id="i-product" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="3.5" width="15" height="17" rx="2.2"></rect><path d="M8 9.2l1.6 1.6 3-3.2M8 15.2l1.6 1.6 3-3.2M15 9.6h1.5M15 15.6h1.5"></path></symbol>
+    <symbol id="i-designer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18C6 9 18 9 20 18"></path><rect x="2.4" y="16.4" width="3.2" height="3.2" rx=".6"></rect><rect x="18.4" y="16.4" width="3.2" height="3.2" rx=".6"></rect><path d="M12 4v7.2M8.5 4.8h7"></path><circle cx="12" cy="12.4" r="1.2"></circle></symbol>
+    <symbol id="i-architect" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"></path><path d="M12 12l8-4.5M12 12L4 7.5M12 12v9"></path></symbol>
+    <symbol id="i-backend" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="2.7"></ellipse><path d="M5 6v12c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7V6"></path><path d="M5 12c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7"></path></symbol>
+    <symbol id="i-frontend" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14.5" rx="2.2"></rect><path d="M3 8.2h18"></path><path d="M11.5 11.5l5.5 2.2-2.4.9-.9 2.4z"></path></symbol>
+    <symbol id="i-mobile" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6.8" y="2.5" width="10.4" height="19" rx="2.6"></rect><path d="M10.8 18.4h2.4"></path></symbol>
+    <symbol id="i-qa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.6"></circle><path d="M15.4 15.4L21 21"></path><path d="M7.7 10.7l1.9 1.9 3.3-3.5"></path></symbol>
+    <symbol id="i-devops" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c-2-2.6-3.6-4-5.5-4a4 4 0 0 0 0 8c1.9 0 3.5-1.4 5.5-4zm0 0c2 2.6 3.6 4 5.5 4a4 4 0 0 0 0-8c-1.9 0-3.5 1.4-5.5 4z"></path></symbol>
+    <symbol id="i-security" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 2.9v5.6c0 4.4-3 8-7 9.5-4-1.5-7-5.1-7-9.5V5.9z"></path><circle cx="12" cy="10.8" r="1.8"></circle><path d="M12 12.6v3.2"></path></symbol>
+    <symbol id="i-writer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20V4h7.5M15.5 4v16"></path><path d="M11 4.2a4 4 0 1 0 0 8"></path></symbol>
+    <symbol id="i-you" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="8.4" r="3.6"></circle><path d="M4 20.5c.8-3.7 3.6-5.7 7-5.7 2.3 0 4.3.9 5.6 2.6"></path><path d="M19 13.5v5M16.5 16h5"></path></symbol>
+    <symbol id="i-gh" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.5 9.5 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.75c0 .27.18.58.69.48A10 10 0 0 0 12 2z"></path></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></symbol>
+  </defs>
+</svg>
+
+<nav class="top" aria-label="التنقّل الرئيسي"><div class="wrap">
+  <a class="logo" href="#top" aria-label="eleven، الصفحة الرئيسية">
+    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle class="ring" cx="16" cy="16" r="12.5" stroke-width="1.6"></circle><path d="M13.2 9.5v13M18.8 9.5v13" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>
+    <span>eleven</span>
+  </a>
+  <div class="links">
+    <a class="hide-sm" href="#how">كيف يعمل</a>
+    <a class="hide-sm" href="#team">الفريق</a>
+    <a class="hide-sm" href="#research">البحث</a>
+    <a class="hide-xs" href="/app/">الواجهة الحية</a>
+    <a href="https://github.com/AbdullhRtima/eleven">GitHub</a>
+  </div>
+  <div class="tools">
+    <a class="tbtn lang" id="langLink" href="/" hreflang="en" lang="en" title="Read this page in English" aria-label="EN: English">EN</a>
+    <button class="tbtn" id="themeBtn" type="button" hidden=""></button>
+  </div>
+</div></nav>
+
+<main id="main">
+<header class="hero" id="top">
+  <div class="stage" aria-hidden="false">
+    <canvas id="strings" role="img" aria-label="رسم متحرك: أحد عشر وترًا تهتزّ ثم تتجدّل في حلقة واحدة، وحولها الأدوار الأحد عشر."></canvas>
+  </div>
+  <div class="wrap">
+    <div class="hero-copy">
+      <p class="kicker"><b>مفتوح المصدر</b> · <bdi>MIT</bdi> · <bdi>macOS</bdi> و<bdi>Windows</bdi> و<bdi>Linux</bdi></p>
+      <h1>ذكاؤك الاصطناعي،<br><em>يعمل كفريق.</em></h1>
+      <p class="sub">أحد عشر دورًا، وحلقة عمل واحدة، وملفات مشتركة. ضع مجلدًا واحدًا في أي مشروع، فيعمل وكيل البرمجة لديك كفريق برمجيات متكامل: المنتج، والتصميم، والمعمارية، والتطوير، وضمان الجودة، وDevOps، والأمن، والتوثيق، بقيادة CTO.</p>
+      <div class="cta">
+        <a class="btn solid" href="#install"><span>ثبّته في دقيقة</span><svg class="arr" aria-hidden="true"><use href="#i-arrow"></use></svg></a>
+        <a class="btn" href="https://github.com/AbdullhRtima/eleven"><svg aria-hidden="true"><use href="#i-gh"></use></svg><span>أضِف نجمة على GitHub</span></a>
+        <a class="tlink" href="/app/">افتح الواجهة الحية</a>
+      </div>
+      <p class="facts"><span><b>11</b> دورًا</span><span><b>1</b> حلقة عمل</span><span><b>0</b> خوادم</span></p>
+    </div>
+  </div>
+  <p class="fig"><b>شكل 1</b>أحد عشر وترًا، وحلقة واحدة. تحتاج نظرية M إلى أحد عشر بُعدًا لتوحّد نظريات الأوتار الخمس، ويوحّد eleven أحد عشر دورًا في فريق واحد.</p>
+</header>
+
+<div class="tape" aria-hidden="true" dir="ltr" data-live="">
+  <div class="track">
+    <ul>
+      <li><i>brief.md</i> <span class="ok">Status: approved</span></li>
+      <li><i>plan.md</i> 1,284 / 4,000</li>
+      <li><i>tasks.md</i> <span class="nx">Round 4 / 10 · NEXT #4 frontend</span></li>
+      <li><i>notes.md</i> 6,912 / 8,000 · rewritten</li>
+      <li><i>reports/03-backend.md</i> <span class="ok">Result: done</span></li>
+      <li><i>reports/04-frontend.md</i> <span class="nx">in progress</span></li>
+      <li><i>decisions/0001-crdt-for-sync.md</i></li>
+      <li><i>003-team-workspaces/brief.md</i> <span class="wt">waiting on you</span></li>
+      <li><i>reports/05-qa.md</i> <span class="ok">42 passed</span></li>
+    </ul>
+    <ul>
+      <li><i>brief.md</i> <span class="ok">Status: approved</span></li>
+      <li><i>plan.md</i> 1,284 / 4,000</li>
+      <li><i>tasks.md</i> <span class="nx">Round 4 / 10 · NEXT #4 frontend</span></li>
+      <li><i>notes.md</i> 6,912 / 8,000 · rewritten</li>
+      <li><i>reports/03-backend.md</i> <span class="ok">Result: done</span></li>
+      <li><i>reports/04-frontend.md</i> <span class="nx">in progress</span></li>
+      <li><i>decisions/0001-crdt-for-sync.md</i></li>
+      <li><i>003-team-workspaces/brief.md</i> <span class="wt">waiting on you</span></li>
+      <li><i>reports/05-qa.md</i> <span class="ok">42 passed</span></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================================================ install -->
+<section id="install"><div class="wrap">
+  <div class="head">
+    <div data-reveal="">
+      <p class="eyebrow"><span class="n">01</span><span>التثبيت في دقيقة</span></p>
+      <h2>مجلد واحد.<br><em>لا يراه git.</em></h2>
+    </div>
+    <p class="lead" data-reveal="" style="--d:.1s">يُثبَّت eleven في <code>./eleven</code> داخل مشروعك ويُخفي نفسه عبر <code>.git/info/exclude</code>، فلا يراه مستودعك ولا زملاؤك. بلا اعتماديات، وبلا خادم.</p>
+  </div>
+  <div class="install">
+    <ol class="steps-mini" data-reveal="">
+      <li><h3>انسخ الحزمة مرة واحدة</h3><p>نسخة واحدة على جهازك تخدم كل مشاريعك.</p></li>
+      <li><h3>ثبّتها في مشروع</h3><p>يُنسخ <code>eleven/</code> إلى المشروع ويُخفى عن git. أعِد التشغيل متى شئت؛ فالخيار <code>--update</code> لا يمسّ عملك أبدًا.</p></li>
+      <li><h3>اطلب من وكيلك أن يقود</h3><p>Claude Code أو Codex أو opencode أو Cursor: أي وكيل يقرأ <code>AGENTS.md</code>.</p></li>
+    </ol>
+    <div data-reveal="" style="--d:.12s">
+      <div class="term" dir="ltr" data-live="" id="term">
+        <div class="bar">
+          <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <div role="tablist" aria-label="اختر نظامك">
+            <button role="tab" id="tab-unix" aria-selected="true" aria-controls="termOut" data-os="unix">macOS · Linux</button>
+            <button role="tab" id="tab-win" aria-selected="false" aria-controls="termOut" data-os="win" tabindex="-1">Windows · PowerShell</button>
+          </div>
+          <button class="replay" type="button" id="replay" aria-label="أعِد التشغيل" title="أعِد التشغيل"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.6-6.4"></path><path d="M3 3.5v5h5"></path></svg></button>
+        </div>
+        <pre id="termOut" role="tabpanel" aria-labelledby="tab-unix" tabindex="0"></pre>
+      </div>
+      <div class="say">
+        <p>ثم قل لـ Claude Code أو Codex أو opencode أو Cursor:</p>
+        <code id="prompt">Read eleven/AGENTS.md and act as the CTO. New item 001: &lt;your idea&gt;. Start at step 0.</code>
+        <button class="copy" type="button" id="copyBtn" aria-label="انسخ الطلب"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path></svg><span>نسخ</span></button>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============================================================ how -->
+<section id="how" class="rule"><div class="wrap">
+  <div class="head">
+    <div data-reveal="">
+      <p class="eyebrow"><span class="n">02</span><span>كيف يعمل</span></p>
+      <h2>حلقة عمل،<br><em>لا محادثة طويلة.</em></h2>
+    </div>
+    <p class="lead" data-reveal="" style="--d:.1s">المحادثات الطويلة تفسد: يمتلئ السياق بالضجيج، وينسى النموذج قراراته. يمنح eleven كل مهمة وكيلًا جديدًا، ويحفظ الذاكرة في مجموعة صغيرة من الملفات تُعاد كتابتها باستمرار، اسمها السجلّ.</p>
+  </div>
+  <figure class="loopfig" data-live="" data-reveal="" id="loopfig"><!-- built by JS --></figure>
+  <ol class="steps" id="steps" data-reveal="">
+    <li data-st="I"><span class="num">01</span><h3>الاستلام</h3><span class="who">product</span><p>يكتب مدير المنتج موجزًا بمعايير قابلة للاختبار. <b>أنت توافق.</b></p><span class="tag">بوابة</span></li>
+    <li data-st="P"><span class="num">02</span><h3>التخطيط</h3><span class="who">cto</span><p>يكتب الـ CTO استراتيجية قصيرة ومهامّ أولى.</p><span></span></li>
+    <li data-st="E"><span class="num">03</span><h3>الاستكشاف</h3><span class="who">architect</span><p>يحدّد المعماري الجزء الصعب، والخيارات، والمزالق. لا كود بعد.</p><span></span></li>
+    <li data-st="M"><span class="num">04</span><h3>الإدارة</h3><span class="who">cto</span><p>يختار الـ CTO مهمة تالية واحدة فقط، لدور واحد.</p><span></span></li>
+    <li data-st="X"><span class="num">05</span><h3>التنفيذ</h3><span class="who">any role</span><p>ينجز وكيل جديد تلك المهمة ويقدّم تقريرًا مدعومًا بالأدلة.</p><span></span></li>
+    <li data-st="V"><span class="num">06</span><h3>التحقق</h3><span class="who">qa</span><p>يفحص الـ QA كل معيار. الفحص الأحمر يغلب أي «تم».</p><span></span></li>
+    <li data-st="S"><span class="num">07</span><h3>الإطلاق</h3><span class="who">cto</span><p>دمج وإصدار بدفعات صغيرة ومتكررة. <b>أنت تقبل.</b></p><span class="tag">بوابة</span></li>
+  </ol>
+  <div class="guards" data-reveal="">
+    <h3>الضوابط</h3>
+    <ul><li>حدّ أقصى <b>10</b> جولات</li><li><b>توقّف</b> عند غياب التقدّم</li><li><bdi>plan.md</bdi> لا يتجاوز <b>4000</b> حرف</li><li><bdi>notes.md</bdi> لا يتجاوز <b>8000</b> حرف، ويُعاد كتابته</li><li><b>الأسئلة المفتوحة</b> توقف العمل حتى تجيب</li><li><b>مهمة واحدة</b> لكل سياق جديد</li></ul>
+  </div>
+</div></section>
+
+<!-- ============================================================ team -->
+<section id="team" class="rule"><div class="wrap">
+  <div class="head">
+    <div data-reveal="">
+      <p class="eyebrow"><span class="n">03</span><span>الفريق</span></p>
+      <h2>أحد عشر دورًا.<br><em>وأنت الرئيس التنفيذي.</em></h2>
+    </div>
+    <p class="lead" data-reveal="" style="--d:.1s">كل دور ملف Markdown قصير: ما يفعله، وما لا يفعله أبدًا، ومتى ينتهي عمله. ولا تحتاج كل مهمة إلى الجميع؛ فإصلاح خطأ يكفيه: CTO ← مهندس ← QA.</p>
+  </div>
+  <div class="team">
+    <div class="constel" data-live="" data-reveal="">
+      <svg id="constel" viewBox="-70 -14 540 492" role="img" aria-label="الـ CTO في المركز يوزّع المهام على الأدوار العشرة الأخرى، وأنت فوق الـ CTO."></svg>
+      <p class="status" aria-hidden="true" id="status"><span>tasks.md</span> <b>#1 NEXT → product</b></p>
+    </div>
+    <ul class="roles" id="roles" data-reveal="" style="--d:.1s">
+      <li class="lead" data-r="cto"><svg aria-hidden="true"><use href="#i-cto"></use></svg><h3><span>CTO</span><small>lead</small></h3><p>يدير حلقة العمل: يخطّط، ويختار المهمة التالية ودورها، ويدمج، ويُطلق، ويفرض الضوابط.</p></li>
+      <li data-r="product"><svg aria-hidden="true"><use href="#i-product"></use></svg><h3><span>مدير المنتج</span></h3><p>الموجز، والنطاق، وما هو خارج النطاق، ومعايير قبول قابلة للاختبار.</p></li>
+      <li data-r="designer"><svg aria-hidden="true"><use href="#i-designer"></use></svg><h3><span>المصمّم</span></h3><p>مسارات الاستخدام، والشاشات، وكل حالة، ونصوص حقيقية، وإتاحة الوصول.</p></li>
+      <li data-r="architect"><svg aria-hidden="true"><use href="#i-architect"></use></svg><h3><span>المعماري</span></h3><p>جوهر الصعوبة، والمقاربات، والواجهات، ووثائق القرارات.</p></li>
+      <li data-r="backend"><svg aria-hidden="true"><use href="#i-backend"></use></svg><h3><span>Backend</span></h3><p>واجهات API، ومنطق النطاق، والبيانات، وترحيلات آمنة. الاختبار أولًا.</p></li>
+      <li data-r="frontend"><svg aria-hidden="true"><use href="#i-frontend"></use></svg><h3><span>Frontend</span></h3><p>واجهة ويب مطابقة للتصميم في كل حالاتها، سهلة الوصول وسريعة.</p></li>
+      <li data-r="mobile"><svg aria-hidden="true"><use href="#i-mobile"></use></svg><h3><span>الجوال</span></h3><p>iOS وAndroid: العمل دون اتصال، ودورة حياة التطبيق، والأذونات.</p></li>
+      <li data-r="qa"><svg aria-hidden="true"><use href="#i-qa"></use></svg><h3><span>QA</span></h3><p>يتحقق من كل معيار بالأدلة، ويملك حق نقض «تم».</p></li>
+      <li data-r="devops"><svg aria-hidden="true"><use href="#i-devops"></use></svg><h3><span>DevOps</span></h3><p>التكامل المستمر (CI)، والنشر، والتراجع، والمراقبة.</p></li>
+      <li data-r="security"><svg aria-hidden="true"><use href="#i-security"></use></svg><h3><span>الأمن</span></h3><p>نمذجة التهديدات والمراجعات. الثغرات عالية الخطورة توقف الإطلاق.</p></li>
+      <li data-r="writer"><svg aria-hidden="true"><use href="#i-writer"></use></svg><h3><span>الكاتب التقني</span></h3><p>README والتوثيق وملاحظات الإصدار، مطابقةً لما أُطلق فعلًا.</p></li>
+      <li class="you" data-r="you"><svg aria-hidden="true"><use href="#i-you"></use></svg><h3><span>أنت</span><small>CEO</small></h3><p>توافق على الموجز، وتجيب عن الأسئلة، وتقبل النتيجة.</p></li>
+    </ul>
+  </div>
+</div></section>
+
+<!-- ============================================================ see -->
+<section id="see" class="rule" style="background:var(--bg-2)"><div class="wrap">
+  <div class="head">
+    <div data-reveal="">
+      <p class="eyebrow"><span class="n">04</span><span>الواجهة الحية</span></p>
+      <h2>شاهد فريقك<br><em>وهو يعمل.</em></h2>
+    </div>
+    <p class="lead" data-reveal="" style="--d:.1s">افتح مجلد مشروعك في المتصفح. تقرأ الصفحة السجلّ بينما يكتبه وكلاؤك، وتبقى ملفاتك على جهازك.</p>
+  </div>
+  <div class="desk" id="desk" data-live="" data-reveal="">
+    <div class="tilt">
+      <figure class="win a" data-w="1"><div class="chrome" aria-hidden="true"><i></i><i></i><i></i><span>eleven.rtima.org/app</span></div><img class="lt" src="../assets/ui-graph-light.png" width="1600" height="1000" loading="lazy" alt="مخطط العمل: المشروع وبنوده، ومهام كل بند ملوّنة حسب حالتها، والتقارير وملفات التصميم والقرارات التي نتجت عنها"><img class="dk" src="../assets/ui-graph-dark.png" width="1600" height="1000" loading="lazy" alt="مخطط العمل: المشروع وبنوده، ومهام كل بند ملوّنة حسب حالتها، والتقارير وملفات التصميم والقرارات التي نتجت عنها"><span class="mk" aria-hidden="true">1</span></figure>
+      <figure class="win b" data-w="2"><div class="chrome" aria-hidden="true"><i></i><i></i><i></i><span>eleven.rtima.org/app</span></div><img class="lt" src="../assets/ui-home-light.png" width="1600" height="1000" loading="lazy" alt="الرئيسية: بطاقة لكل بند؛ البند الذي ينتظرك يأتي أولًا باللون الكهرماني، وأسئلته المفتوحة مطويّة"><img class="dk" src="../assets/ui-home-dark.png" width="1600" height="1000" loading="lazy" alt="الرئيسية: بطاقة لكل بند؛ البند الذي ينتظرك يأتي أولًا باللون الكهرماني، وأسئلته المفتوحة مطويّة"><span class="mk" aria-hidden="true">2</span></figure>
+      <figure class="win c" data-w="3"><div class="chrome" aria-hidden="true"><i></i><i></i><i></i><span>eleven.rtima.org/app</span></div><img class="lt" src="../assets/ui-reader-light.png" width="1600" height="1000" loading="lazy" alt="القارئ: شجرة الملفات، وتقرير مفتوح في الوسط، ومخطط العمل بجانبه"><img class="dk" src="../assets/ui-reader-dark.png" width="1600" height="1000" loading="lazy" alt="القارئ: شجرة الملفات، وتقرير مفتوح في الوسط، ومخطط العمل بجانبه"><span class="mk" aria-hidden="true">3</span></figure>
+    </div>
+  </div>
+  <div class="caps">
+    <div data-w="1" data-reveal=""><span class="n">1</span><h3>المشروع ← البنود ← المهام ← المخرجات</h3><p>يعرض مخطط العمل كل مهمة ملوّنة حسب حالتها، مع التقارير والتصاميم والقرارات التي أنتجتها. انقر أي عقدة لفتحها.</p></div>
+    <div data-w="2" data-reveal="" style="--d:.08s"><span class="n">2</span><h3>ما يجري الآن، وما ينتظرك</h3><p>بطاقة لكل بند. البنود التي تنتظرك تأتي أولًا باللون الكهرماني، وأسئلتها المفتوحة مطويّة.</p></div>
+    <div data-w="3" data-reveal="" style="--d:.16s"><span class="n">3</span><h3>اقرأه كما في Obsidian</h3><p>شجرة ملفات على اليسار، والمستند في الوسط، والمخطط بجانبه. المسارات داخل المستند روابط. بمظهرين: فاتح وداكن.</p></div>
+  </div>
+  <p class="see-foot"><a class="btn" href="/app/"><span>افتح الواجهة الحية</span><svg class="arr" aria-hidden="true"><use href="#i-arrow"></use></svg></a></p>
+</div></section>
+
+<!-- ============================================================ research -->
+<section id="research" class="rule"><div class="wrap">
+  <div class="head">
+    <div data-reveal="">
+      <p class="eyebrow"><span class="n">05</span><span>مبني على البحث</span></p>
+      <h2>التنظيم يتفوّق<br><em>على حجم النموذج.</em></h2>
+    </div>
+    <p class="lead" data-reveal="" style="--d:.1s">حلقة عمل eleven مستمدّة من <a href="https://arxiv.org/abs/2608.26480">GVS5H</a> (Gao وآخرون، 2026): نموذج واحد يُقسَم إلى مدير وعمّال جدد، لكلٍّ منهم مهمة واحدة، ينسّقون عبر ملفات على القرص.</p>
+  </div>
+  <div class="results">
+    <div class="res" data-reveal="">
+      <div class="big" dir="ltr"><span class="count" data-to="25.6" data-dec="1" data-pre="+">+25.6</span></div>
+      <p>نقطة إضافية في مسائل LiveCodeBench الصعبة لنموذج <bdi>Qwen3.8-27B</bdi>.</p>
+      <div class="meter" role="img" aria-label="نموذج Qwen3.8-27B وحده: 66.8. ضمن حلقة العمل: 92.4.">
+        <div class="row"><span>وحده</span><b>66.8</b><div class="trk"><div class="fill" style="--w:66.8%"></div></div></div>
+        <div class="row"><span>ضمن حلقة العمل</span><b>92.4</b><div class="trk"><div class="fill hi" style="--w:92.4%"></div></div></div>
+      </div>
+    </div>
+    <div class="res" data-reveal="">
+      <div class="big" dir="ltr"><span class="count" data-to="93.0" data-dec="1">93.0</span><small>vs</small><span class="count" data-to="90.4" data-dec="1">90.4</span></div>
+      <p>نموذج رخيص منسَّق تفوّق على نموذج رائد…</p>
+      <div class="meter" role="img" aria-label="نموذج رخيص منسَّق: 93.0. نموذج رائد: 90.4.">
+        <div class="row"><span>نموذج رخيص منسَّق</span><b>93.0</b><div class="trk"><div class="fill hi" style="--w:93%"></div></div></div>
+        <div class="row"><span>نموذج رائد</span><b>90.4</b><div class="trk"><div class="fill" style="--w:90.4%"></div></div></div>
+      </div>
+    </div>
+    <div class="res" data-reveal="">
+      <div class="big" dir="ltr"><span class="count" data-to="9" data-dec="0" data-pre="~" data-suf="%">~9%</span></div>
+      <p>…بنحو 9% فقط من التكلفة.</p>
+      <div class="meter" role="img" aria-label="التكلفة: النموذج الرائد 100%، والنموذج المنسَّق نحو 9%.">
+        <div class="row"><span>تكلفة النموذج الرائد</span><b>100%</b><div class="trk"><div class="fill" style="--w:100%"></div></div></div>
+        <div class="row"><span>النموذج المنسَّق</span><b>~9%</b><div class="trk"><div class="fill hi" style="--w:9%"></div></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="principles">
+    <ol data-reveal="">
+      <li><b>التجزئة:</b> مهمة واحدة لكل استدعاء تُبقي كل وكيل مركّزًا.</li>
+      <li><b>سياق دائم:</b> السجلّ يبقى بعد انتهاء أي محادثة.</li>
+      <li><b>التفكير على القرص قبل الكود:</b> الملاحظات أولًا، ثم التنفيذ.</li>
+      <li><b>الكلمة الأخيرة للمُتحقِّق:</b> اختبار فاشل يغلب «تم» مهما بدت واثقة.</li>
+    </ol>
+    <div data-reveal="" style="--d:.1s">
+      <p class="fair"><strong>وللإنصاف</strong><span>تستهلك هذه البنية نحو 3 أضعاف الرموز (tokens) مقارنةً باستدعاء واحد، والنماذج القوية هي الأقل استفادة، وبعض الإعدادات ساءت نتائجها. ويضيف eleven الأدوار التي يحتاجها منتج حقيقي (التصميم، والأمن، وDevOps، والتوثيق)، ويُبقيك عند كل بوابة.</span></p>
+      <p class="cite">المصدر: Gao وآخرون، 2026، <a href="https://arxiv.org/abs/2608.26480">arXiv:2608.26480</a></p>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============================================================ why -->
+<section id="why" class="rule"><div class="wrap">
+  <div class="head">
+    <div data-reveal="">
+      <p class="eyebrow"><span class="n">06</span><span>لماذا eleven</span></p>
+      <h2>صغير بما يكفي لتقرأه.<br><em>صارم بما يكفي لتثق به.</em></h2>
+    </div>
+    <p class="lead" data-reveal="" style="--d:.1s">الحزمة كلها نحو 25 ملف Markdown. اقرأها في ربع ساعة، ثم غيّر فيها ما تشاء.</p>
+  </div>
+  <div class="why">
+    <div data-reveal=""><span class="path">AGENTS.md</span><h3>يعمل مع وكيلك</h3><p>Claude Code وCodex وopencode وCursor: أي وكيل يقرأ <bdi>AGENTS.md</bdi>. بلا ارتباط بمزوّد، وبلا إطار عمل.</p></div>
+    <div data-reveal="" style="--d:.06s"><span class="path">/app</span><h3>واجهة حية في المتصفح</h3><p>افتح مشروعك على <a href="/app/"><bdi>eleven.rtima.org/app</bdi></a> أو محليًا: شجرة ملفات، وقارئ لكل مستند، ومخطط للعمل. تتحدّث كل ثانيتين، ولا يُرفع أي شيء.</p></div>
+    <div data-reveal=""><span class="path">ui/ → Home</span><h3>ما ينتظرك، أولًا</h3><p>حين تكون الخطوة التالية لك، تتصدّر بطاقة ذلك البند باللون الكهرماني: سطر واحد بما عليك فعله، والأسئلة المفتوحة مطويّة تحته.</p></div>
+    <div data-reveal="" style="--d:.06s"><span class="path">reports/</span><h3>أدلة، لا انطباعات</h3><p>كل تقرير يلصق مخرجات البناء والاختبار الحقيقية، ويعيد الـ QA تشغيلها.</p></div>
+    <div data-reveal=""><span class="path">decisions/</span><h3>قرارات موثّقة</h3><p>الخيارات المكلفة تُوثَّق في صفحة واحدة، فلا يعيد أحد الجدال فيها الشهر القادم.</p></div>
+    <div data-reveal="" style="--d:.06s"><span class="path">install.sh<br>install.ps1</span><h3>متعدد المنصات</h3><p><bdi>install.sh</bdi> لـ macOS وLinux، و<bdi>install.ps1</bdi> لـ Windows. إعادة التثبيت آمنة، و<code>--update</code> لا يمسّ عملك أبدًا.</p></div>
+  </div>
+</div></section>
+
+<!-- ============================================================ faq -->
+<section id="faq" class="rule"><div class="wrap faq">
+  <div data-reveal="">
+    <p class="eyebrow"><span class="n">07</span><span>أسئلة شائعة</span></p>
+    <h2>أسئلة،<br><em>وأجوبتها.</em></h2>
+  </div>
+  <div data-reveal="" style="--d:.1s">
+    <details><summary><span class="q">Q1</span><h3>هل يستهلك رموزًا (tokens) أكثر؟</h3><span class="x" aria-hidden="true"></span></summary><p>نعم، غالبًا نحو 3 أضعاف محادثة واحدة في الحلقة الكاملة. في المقابل تحصل على إعادة عمل أقل، ومفاجآت أقل، وأثر مكتوب يشرح سبب كل قرار. وللإصلاحات الصغيرة تخطَّ بعض الأدوار: CTO ← مهندس ← QA.</p></details>
+    <details><summary><span class="q">Q2</span><h3>هل يُرسَل الكود أو السجلّ إلى أي مكان؟</h3><span class="x" aria-hidden="true"></span></summary><p>لا. eleven مجرد ملفات داخل مشروعك. تقرأ الواجهة الحية مجلدك داخل متصفحك عبر File System Access API، ولا يُرفع أي شيء.</p></details>
+    <details><summary><span class="q">Q3</span><h3>ما المتصفحات التي تدعم الواجهة الحية؟</h3><span class="x" aria-hidden="true"></span></summary><p>يعرض Chrome وEdge التحديثات مباشرة. أما Firefox وSafari فيفتحان لقطة ثابتة؛ اختر المجلد مجددًا لتحديثها. وفي الحالتين تبقى الملفات في متصفحك ولا يُرفع أي شيء. وملفات HTML الموجودة في السجلّ تُفتح داخل إطار معزول (sandbox).</p></details>
+    <details><summary><span class="q">Q4</span><h3>هل سيراه زملائي؟</h3><span class="x" aria-hidden="true"></span></summary><p>لا. فهو مستثنى عبر <code>.git/info/exclude</code>، وهذا الملف محلي في نسختك من المستودع. ولمشاركة السجلّ مع فريقك، احذف ذلك السطر وأضِف <code>eleven/work</code> في commit.</p></details>
+    <details><summary><span class="q">Q5</span><h3>هل أستطيع تعديل الأدوار؟</h3><span class="x" aria-hidden="true"></span></summary><p>بكل تأكيد. حين يكرّر وكيلٌ خطأً ما، أضِف سطرًا إلى ملف دوره. هكذا يتعلّم فريقك.</p></details>
+  </div>
+</div></section>
+
+<!-- ============================================================ final -->
+<section class="final rule" data-live="" id="final">
+  <svg class="harp" id="harp" viewBox="0 0 1200 500" preserveAspectRatio="none" aria-hidden="true"></svg>
+  <div class="wrap">
+    <h2 data-reveal="">توقّف عن الدردشة.<br><em>وابدأ القيادة.</em></h2>
+    <p data-reveal="" style="--d:.1s">امنح وكيلك فريقًا، وحلقة عمل، وتعريفًا واضحًا لـ«تم».</p>
+    <div class="cta" data-reveal="" style="--d:.18s">
+      <a class="btn solid" href="#install"><span>ثبّت eleven</span><svg class="arr" aria-hidden="true"><use href="#i-arrow"></use></svg></a>
+      <a class="btn" href="/app/">افتح الواجهة الحية</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer><div class="wrap">
+  <span><b>eleven</b>: تحتاج نظرية M إلى أحد عشر بُعدًا لتوحيد كل شيء.</span>
+  <span>MIT · <a href="https://github.com/AbdullhRtima/eleven">GitHub</a> · <a href="https://rtima.org">rtima.org</a></span>
+</div></footer>
+
+<script>window.ELEVEN_T = {"ring.sub": "دورًا · حلقة واحدة", "term.once": "# مرة واحدة", "term.per": "# لكل مشروع", "copy": "نسخ", "copied": "تم النسخ", "gate.approve": "أنت توافق", "gate.accept": "أنت تقبل", "loop.back": "فحص أحمر ← عودة إلى الإدارة", "loop.round": "الجولة", "loop.aria": "مخطط حلقة العمل: الاستلام ثم التخطيط ثم الاستكشاف، تليها دورة من الإدارة والتنفيذ والتحقق تتكرّر حتى ينجح الـ QA، بحدّ أقصى 10 جولات، ثم الإطلاق. الاستلام والإطلاق بوابتان تنتظران موافقتك.", "theme.auto": "المظهر: تلقائي (يتبع نظامك). التبديل إلى الفاتح", "theme.light": "المظهر: فاتح. التبديل إلى الداكن", "theme.dark": "المظهر: داكن. التبديل إلى التلقائي", "st.I": "الاستلام", "st.P": "التخطيط", "st.E": "الاستكشاف", "st.M": "الإدارة", "st.X": "التنفيذ", "st.V": "التحقق", "st.S": "الإطلاق"};</script>
+<script src="../assets/site.js"></script>
+</body>
+</html>
