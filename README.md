@@ -80,16 +80,12 @@ Every piece of work is an **item** with its own folder: the **ledger**. The CTO 
 That role runs in a **fresh context**, does the task, and writes a report. QA can veto "done". You approve
 the brief and accept the result.
 
-```mermaid
-flowchart LR
-  I["0 · Intake<br/>product writes brief.md"] -->|you approve| P["1 · Plan<br/>CTO"]
-  P --> E["2 · Explore<br/>notes.md, no code"]
-  E --> M["3 · Manage<br/>CTO picks ONE task"]
-  M --> X["4 · Execute<br/>fresh worker + report"]
-  X --> V{"5 · Verify<br/>QA"}
-  V -->|red check| M
-  V -->|green| S["6 · Ship<br/>you accept"]
-```
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/loop-dark.svg">
+    <img src="docs/brand/loop-light.svg" width="560" alt="The loop: 0 Intake (product writes brief.md; gate: you approve), 1 Plan (CTO), 2 Explore (notes.md, no code), 3 Manage (CTO picks one task for one role), 4 Execute (a fresh worker writes a report), 5 Verify (QA; a red check goes back to Manage, at most 10 rounds), 6 Ship (gate: you accept).">
+  </picture>
+</p>
 
 **The guards** keep the loop honest:
 

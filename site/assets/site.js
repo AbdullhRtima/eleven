@@ -3,7 +3,11 @@
 "use strict";
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const root = document.documentElement;
-const RM = matchMedia("(prefers-reduced-motion: reduce)").matches || root.dataset.motion === "reduce";
+/* Reduced motion is live: turning it on mid-visit moves every module to its static state; turning it off restarts the loops. */
+const mqRM = matchMedia("(prefers-reduced-motion: reduce)");
+let RM = mqRM.matches || root.dataset.motion === "reduce";
+const onMotion = [];
+mqRM.addEventListener("change", () => { const v = mqRM.matches || root.dataset.motion === "reduce"; if (v !== RM) { RM = v; onMotion.forEach((f) => f()); } });
 const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
   set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} } };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -13,6 +17,7 @@ const ease = (x) => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 const STR = window.ELEVEN_T || {};
 const lang = root.lang === "ar" ? "ar" : "en";
 const T = (k) => STR[k] ?? k;
+const RN = (r) => STR["role." + r] ?? r;   // role name in diagrams: translated on /ar/ (except the hero ring), the key on /
 
 /* ======================================================== language link (design.md §2): a plain link; JS saves eleven-lang and keeps the #hash */
 const ll = $("#langLink");
@@ -62,9 +67,9 @@ const live = (el) => !document.hidden && vis.get(el) !== false;
 document.addEventListener("visibilitychange", () => { if (!document.hidden) $$("[data-live]").forEach((el) => vis.get(el) && el.dispatchEvent(new Event("on"))); });
 function loopWhileLive(el, frame) { // rAF loop that stops off-screen and resumes on "on"
   let id = 0, last = 0;
-  const tick = (now) => { if (!live(el)) { id = 0; return; } const dt = last ? Math.min(64, now - last) : 16; last = now; frame(dt, now); id = requestAnimationFrame(tick); };
+  const tick = (now) => { if (RM || !live(el)) { id = 0; return; } const dt = last ? Math.min(64, now - last) : 16; last = now; frame(dt, now); id = requestAnimationFrame(tick); };
   const start = () => { if (!id && !RM) { last = 0; id = requestAnimationFrame(tick); } };
-  el.addEventListener("on", start); start();
+  el.addEventListener("on", start); onMotion.push(start); start();
 }
 const css = (n) => getComputedStyle(root).getPropertyValue(n).trim();
 
@@ -167,7 +172,8 @@ addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 8), 
   redraw(); new ResizeObserver(redraw).observe(cv);
   document.fonts && document.fonts.ready.then(redraw);
   onTheme.push(redraw);
-  if (!RM) loopWhileLive(hero, frame);
+  onMotion.push(() => { if (RM) redraw(); else T0 = performance.now() - 3600; });   // back on: skip the intro, the ring is already formed
+  loopWhileLive(hero, frame);
 })();
 
 /* ======================================================== tape: CSS marquee, paused off-screen via .run (and in reduced motion) */
@@ -181,7 +187,9 @@ addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 8), 
   };
   let os = "unix", run = 0, started = false;
   const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
-  const line = ([k, s], n) => k === "c" ? `<span class="c">${esc(T("term." + s))}</span>` : k === "$" || k === ">" ? `<span class="p">${esc(k)}</span> ${esc(s.slice(0, n ?? s.length))}` : k ? `<span class="${k}">${k === "k" ? "✓ " : ""}${esc(s)}</span>` : "";
+  // narrow screens wrap a command only at spaces and after a / or \: words (and "my-app") stay whole
+  const path = (s) => s.split(/(\s+|[\/\\]+)/).map((p, i) => !p ? "" : i % 2 ? (/\s/.test(p) ? p : esc(p) + "<wbr>") : `<span class="w">${esc(p)}</span>`).join("");
+  const line = ([k, s], n) => k === "c" ? `<span class="c">${esc(T("term." + s))}</span>` : k === "$" || k === ">" ? `<span class="p">${esc(k)}</span> ${path(s.slice(0, n ?? s.length))}` : k ? `<span class="${k}">${k === "k" ? "✓ " : ""}${path(s)}</span>` : "";
   const full = () => L[os].map((l) => line(l)).join("\n");
   async function type() {
     const my = ++run; const lines = L[os]; let done = [];
@@ -199,6 +207,7 @@ addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 8), 
   term.addEventListener("on", () => { if (!started) { started = true; show(); } });
   out.innerHTML = RM ? full() : '<span class="caret"></span>';
   if (RM) started = true;
+  onMotion.push(() => { if (RM) { run++; started = true; out.innerHTML = full(); } });
   const tabs = $$('[role="tab"]', term);
   const pick = (b) => { tabs.forEach((x) => { const on = x === b; x.setAttribute("aria-selected", on); x.tabIndex = on ? 0 : -1; }); out.setAttribute("aria-labelledby", b.id); os = b.dataset.os; started = true; show(); };
   tabs.forEach((b) => { b.addEventListener("click", () => pick(b)); b.addEventListener("keydown", (e) => { if (e.key === "ArrowRight" || e.key === "ArrowLeft") { const o = tabs[(tabs.indexOf(b) + 1) % 2]; o.focus(); pick(o); } }); });
@@ -243,7 +252,7 @@ addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 8), 
     } else h += tx("rnd-l", X(170), 392, "middle", T("loop.round")) + tx("rnd", X(170), 432, "middle", "1 / 10", "rnd");
     for (const k in L.P) {
       const [bx, y] = L.P[k], x = X(bx), gate = k === "I" || k === "S";
-      const sub = gate ? ["gl", T(k === "I" ? "gate.approve" : "gate.accept")] : OWN[k] ? ["own", OWN[k]] : null;
+      const sub = gate ? ["gl", T(k === "I" ? "gate.approve" : "gate.accept")] : OWN[k] ? ["own", STR["own." + OWN[k]] ?? OWN[k]] : null;
       h += `<g class="st" data-k="${k}">`;
       if (gate) h += `<circle class="gate" cx="${x}" cy="${y}" r="17"/>`;
       h += `<circle class="halo" cx="${x}" cy="${y}" r="15"/><circle class="n" cx="${x}" cy="${y}" r="8"/>`;
@@ -303,7 +312,9 @@ addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 8), 
     rows.forEach((r) => r.classList.remove("on"));
   }
   build(); timeline = mkTimeline(); reset();
-  if (RM) staticState(); else { placeAt("I"); loopWhileLive(fig, frame); }
+  if (RM) staticState(); else placeAt("I");
+  onMotion.push(() => { if (RM) staticState(); else { reset(); placeAt("I"); } });
+  loopWhileLive(fig, frame);
   const rebuild = () => { build(); reset(); if (RM) staticState(); else placeAt("I"); };
   new ResizeObserver(() => { if ((fig.clientWidth < 600) !== tall) rebuild(); }).observe(fig);
 })();
@@ -317,22 +328,47 @@ addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 8), 
   let h = `<circle class="orbit" cx="${C0[0]}" cy="${C0[1]}" r="${RR}"/>`;
   RING.forEach((r) => h += `<line class="ln" x1="${C0[0]}" y1="${C0[1]}" x2="${pos[r][0].toFixed(1)}" y2="${pos[r][1].toFixed(1)}"/>`);
   h += `<line class="ln you" x1="${C0[0]}" y1="${C0[1] - 38}" x2="200" y2="44"/>`;
+  // Label position for a font size of f SVG units (11 on desktop; larger on phones so it renders at 11 px or more, see fit()).
+  const RAD = { you: 18, cto: 38 }, lab = (r, f) => {
+    const rad = RAD[r] || 23, [x, y] = pos[r], k = f / 11; let lx = x, ly = y + rad + 16, anc = "middle";
+    if (!RAD[r]) { const a = Math.atan2(y - C0[1], x - C0[0]); const lr = RR + rad + 14; lx = C0[0] + Math.cos(a) * lr; ly = C0[1] + Math.sin(a) * lr + 4 * k; anc = Math.cos(a) > .25 ? "start" : Math.cos(a) < -.25 ? "end" : "middle"; if (Math.abs(Math.cos(a)) <= .25) ly += Math.sin(a) > 0 ? 8 * k : -2 * k; }
+    if (r === "you") { lx = x + rad + 10; ly = y + 4 * k; anc = "start"; }
+    if (r === "cto") ly = y + rad + 9 + f;
+    return [lx, ly, anc];
+  };
   const node = (r, rad, ic, cls) => {
-    const [x, y] = pos[r]; let lx = x, ly = y + rad + 16, anc = "middle";
-    if (cls === "") { const a = Math.atan2(y - C0[1], x - C0[0]); const lr = RR + rad + 14; lx = C0[0] + Math.cos(a) * lr; ly = C0[1] + Math.sin(a) * lr + 4; anc = Math.cos(a) > .25 ? "start" : Math.cos(a) < -.25 ? "end" : "middle"; if (Math.abs(Math.cos(a)) <= .25) ly += Math.sin(a) > 0 ? 8 : -2; }
-    if (r === "you") { lx = x + rad + 10; ly = y + 4; anc = "start"; }
-    if (r === "cto") ly = y + rad + 20;
-    return `<g class="nd ${cls}" data-r="${r}"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rad}"/><use href="#i-${ic}" x="${(x - rad * .55).toFixed(1)}" y="${(y - rad * .55).toFixed(1)}" width="${(rad * 1.1).toFixed(1)}" height="${(rad * 1.1).toFixed(1)}"/><text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anc}" style="direction:ltr">${r}</text></g>`;
+    const [x, y] = pos[r], [lx, ly, anc] = lab(r, 11);
+    return `<g class="nd ${cls}" data-r="${r}"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rad}"/><use href="#i-${ic}" x="${(x - rad * .55).toFixed(1)}" y="${(y - rad * .55).toFixed(1)}" width="${(rad * 1.1).toFixed(1)}" height="${(rad * 1.1).toFixed(1)}"/><text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anc}" style="direction:ltr">${RN(r)}</text></g>`;
   };
   RING.forEach((r) => h += node(r, 23, r, ""));
   h += node("you", 18, "you", "you");
   h += node("cto", 38, "cto", "lead");
   h += `<circle class="pulse" id="pulse" r="5" cx="${C0[0]}" cy="${C0[1]}" opacity="0"/>`;
   svg.innerHTML = h;
+  // Phones: the SVG scales down, so grow the labels (in SVG units) until they render at 11 px or more, and widen the
+  // viewBox to fit them. Desktop keeps the original viewBox and 11-unit labels.
+  const VB0 = svg.getAttribute("viewBox").split(" ").map(Number), texts = $$(".nd text", svg);
+  function fit() {
+    const px = svg.getBoundingClientRect().width; if (!px) return;
+    let vb = VB0, f = 11;
+    for (let n = 0; n < 6; n++) {
+      const need = 11 * vb[2] / px, want = need <= 11.01 ? 11 : need * 1.02;
+      if (n && Math.abs(want - f) < .05) break;
+      f = want;
+      texts.forEach((t) => { const [lx, ly] = lab(t.parentNode.dataset.r, f); t.setAttribute("x", lx.toFixed(1)); t.setAttribute("y", ly.toFixed(1)); t.style.fontSize = f === 11 ? "" : f.toFixed(2) + "px"; });
+      const bb = svg.getBBox(), x0 = Math.min(VB0[0], bb.x - 6), y0 = Math.min(VB0[1], bb.y - 4);
+      vb = [x0, y0, Math.max(VB0[0] + VB0[2], bb.x + bb.width + 6) - x0, Math.max(VB0[1] + VB0[3], bb.y + bb.height + 4) - y0];
+    }
+    svg.setAttribute("viewBox", vb.map((v) => +v.toFixed(1)).join(" "));
+  }
+  let fitW = -1;
+  fit(); new ResizeObserver(() => { const w = wrap.clientWidth; if (w !== fitW) { fitW = w; fit(); } }).observe(wrap); document.fonts && document.fonts.ready.then(fit);
   const pulse = $("#pulse", svg), nodes = Object.fromEntries($$(".nd", svg).map((g) => [g.dataset.r, g])), rows = Object.fromEntries($$("#roles li").map((l) => [l.dataset.r, l]));
   const SEQ = ["product", "you", "architect", "designer", "backend", "frontend", "mobile", "qa", "security", "devops", "writer", "you"];
   let i = 0, el = 0, n = 1;
-  const STAT = (r, k) => r === "you" ? (k === SEQ.length - 1 ? `<span>tasks.md</span> <b>GATE → you: accept</b>` : `<span>brief.md</span> <b>Status: waiting on you</b>`) : `<span>tasks.md</span> <b>#${k + 1} NEXT → ${r}</b>`;
+  const STAT = lang === "ar"
+    ? (r, k) => r === "you" ? (k === SEQ.length - 1 ? `<span>tasks.md</span> <b>${T("st.gate")}</b>` : `<span>brief.md</span> <b>${T("st.wait")}</b>`) : `<span>tasks.md</span> <b><bdi>#${k + 1}</bdi> ${T("st.next")} ← ${RN(r)}</b>`
+    : (r, k) => r === "you" ? (k === SEQ.length - 1 ? `<span>tasks.md</span> <b>GATE → you: accept</b>` : `<span>brief.md</span> <b>Status: waiting on you</b>`) : `<span>tasks.md</span> <b>#${k + 1} NEXT → ${r}</b>`;
   function light(r, on) { nodes[r] && nodes[r].classList.toggle("on", on); rows[r] && rows[r].classList.toggle("on", on); }
   function frame(dt) {
     el += dt; const r = SEQ[i], [tx, ty] = pos[r], f = clamp(el / 520, 0, 1), e = ease(f);
@@ -341,8 +377,10 @@ addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 8), 
     else if (pulse.getAttribute("opacity") !== "0") { pulse.setAttribute("opacity", 0); light(r, true); status.innerHTML = STAT(r, i); }
     if (el > 1700) { light(r, false); i = (i + 1) % SEQ.length; el = 0; }
   }
-  if (RM) { light("cto", false); status.innerHTML = STAT("frontend", 4); nodes.frontend.classList.add("on"); }
-  else loopWhileLive(wrap, frame);
+  const still = () => { Object.keys(nodes).forEach((r) => light(r, false)); pulse.setAttribute("opacity", 0); status.innerHTML = STAT("frontend", 4); nodes.frontend.classList.add("on"); };
+  if (RM) still();
+  onMotion.push(() => { if (RM) still(); else { light("frontend", false); i = 0; el = 0; } });
+  loopWhileLive(wrap, frame);
   // hover a role row -> light its node
   $$("#roles li").forEach((li) => { li.addEventListener("mouseenter", () => nodes[li.dataset.r]?.classList.add("on")); li.addEventListener("mouseleave", () => nodes[li.dataset.r]?.classList.remove("on")); });
 })();
@@ -352,7 +390,8 @@ addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 8), 
   const desk = $("#desk"), tilt = $(".tilt", desk), wins = $$(".win", desk);
   const k = { 1: -14, 2: 30, 3: 56 };
   let mx = 0, my = 0;
-  if (!RM) {
+  onMotion.push(() => { if (RM) { wins.forEach((w) => w.style.removeProperty("--py")); tilt.style.removeProperty("--rx"); tilt.style.removeProperty("--ry"); } });
+  {
     loopWhileLive(desk, () => {
       if (!matchMedia("(min-width: 901px)").matches) return;
       const r = desk.getBoundingClientRect(), p = (r.top + r.height / 2 - innerHeight / 2) / innerHeight;
@@ -372,10 +411,11 @@ addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 8), 
 (() => {
   const fmt = (el, v) => (el.dataset.pre || "") + v.toFixed(+el.dataset.dec) + (el.dataset.suf || "");
   const count = (el) => { if (RM) return; const to = +el.dataset.to, t0 = performance.now(), D = 1500;
-    const step = (now) => { const f = clamp((now - t0) / D, 0, 1); el.textContent = fmt(el, to * (1 - Math.pow(1 - f, 3))); if (f < 1) requestAnimationFrame(step); };
+    const step = (now) => { const f = RM ? 1 : clamp((now - t0) / D, 0, 1); el.textContent = fmt(el, to * (1 - Math.pow(1 - f, 3))); if (f < 1) requestAnimationFrame(step); };
     el.textContent = fmt(el, 0); requestAnimationFrame(step); };
   const rio = new IntersectionObserver((es) => es.forEach((e) => { if (!e.isIntersecting) return; e.target.classList.add("in"); $$(".count", e.target).forEach(count); rio.unobserve(e.target); }), { threshold: .12 });
   $$("[data-reveal]").forEach((el) => RM ? el.classList.add("in") : rio.observe(el));
+  onMotion.push(() => { if (RM) $$("[data-reveal]").forEach((el) => { rio.unobserve(el); el.classList.add("in"); }); });
 })();
 
 /* ======================================================== final: eleven strings drawn in */
@@ -383,7 +423,9 @@ addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 8), 
   const svg = $("#harp"), sec = $("#final"); let h = "";
   for (let i = 0; i < 11; i++) { const y = 40 + i * 42, bow = (i - 5) * 26; h += `<path d="M0 ${y} Q600 ${250 + bow * .35} 1200 ${y}" pathLength="1" style="stroke-dasharray:1;stroke-dashoffset:${RM ? 0 : 1};transition:stroke-dashoffset 2.2s ${(i * .07).toFixed(2)}s cubic-bezier(.2,.7,.2,1)"/>`; }
   svg.innerHTML = h;
-  if (!RM) sec.addEventListener("on", () => $$("path", svg).forEach((p) => p.style.strokeDashoffset = 0), { once: true });
+  const drawIn = () => $$("path", svg).forEach((p) => p.style.strokeDashoffset = 0);
+  if (!RM) sec.addEventListener("on", drawIn, { once: true });
+  onMotion.push(() => { if (RM) drawIn(); });
 })();
 
 paintThemeBtn();
