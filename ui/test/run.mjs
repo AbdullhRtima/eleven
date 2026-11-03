@@ -196,11 +196,12 @@ try {
   const m1 = await b.ev(`(async()=>{const r={};try{await fetch(${JSON.stringify(REMOTE + "/deliberate-fetch")});r.fetch="sent"}catch(e){r.fetch="blocked"}
     const s=document.createElement("script");s.src=${JSON.stringify(REMOTE + "/deliberate-script.js")};r.script=await new Promise((res)=>{s.onload=()=>res("ran");s.onerror=()=>res("blocked");document.head.append(s)});
     const i=new Image();i.src=${JSON.stringify(REMOTE.replace("http:", "https:") + "/deliberate-img")};
-    await document.fonts.load("600 16px Inter");r.inter=[...document.fonts].some((f)=>f.family.replace(/"/g,"")==="Inter"&&f.status==="loaded");
+    await Promise.all(["600 16px Geist","400 16px 'Geist Mono'","400 40px 'Instrument Serif'","italic 400 25px 'Instrument Serif'"].map((f)=>document.fonts.load(f)));
+    r.fonts=["Geist","Geist Mono","Instrument Serif"].map((n)=>[...document.fonts].some((f)=>f.family.replace(/"/g,"")===n&&f.status==="loaded"));
     r.libs=[typeof marked?.parse,typeof DOMPurify?.sanitize];return r})()`);
   await sleep(300);
-  check("M1", "the CSP blocks fetch and injected remote scripts from the app; cdnjs libraries and Google Fonts (Inter) still load",
-    eq(m1, { fetch: "blocked", script: "blocked", inter: true, libs: ["function", "function"] }) && !hits.some((h) => h.includes("/deliberate-fetch") || h.includes("/deliberate-script")), { m1, hits });
+  check("M1", "the CSP blocks fetch and injected remote scripts from the app; cdnjs libraries and Google Fonts (Geist, Geist Mono, Instrument Serif) still load",
+    eq(m1, { fetch: "blocked", script: "blocked", fonts: [true, true, true], libs: ["function", "function"] }) && !hits.some((h) => h.includes("/deliberate-fetch") || h.includes("/deliberate-script")), { m1, hits });
 
   // ------------------------------------------------------------ N1c: waiting / working / done / idle look different on every card (light + dark)
   const STATE_LOOK = { waiting: ["--warn", "--warn"], working: ["--accent", "--accent-ink"], done: ["--ok", "--ok-ink"], idle: ["--muted", "--muted"], new: ["--muted", "--muted"] };
@@ -219,7 +220,7 @@ try {
         eq(c.tree, [`sdot s-${state}`, T[dotV]]) && (state === "waiting" ? c.bg === T["--warn-soft"] && c.bl === `${T["--warn"]} 3px` : c.bg === T["--panel"]);
       if (!ok) bad.push({ want: [state, label, T[dotV], T[inkV]], got: c });
     }
-    check("N1", `${theme}: every card and tree dot shows its state by class, label and colour (waiting amber, working indigo, done green, idle grey)`,
+    check("N1", `${theme}: every card and tree dot shows its state by class, label and colour (waiting amber, working vermilion, done green, idle grey)`,
       looks.cards.length === 12 && bad.length === 0 && new Set(["--warn", "--accent", "--ok", "--muted"].map((v) => looks.T[v])).size === 4, bad.length ? bad : looks.cards.length);
   }
 
@@ -537,6 +538,21 @@ try {
   const tapped = await view();
   check("N1", "390 px graph (top-down): tapping a task opens its report and closes the graph", td === "td" && eq(tapped, ["work/002-working/reports/01-architect.md", false]) && (await b.ev(`document.getElementById('graphPane').hidden`)), { td, tapped });
   await b.viewport(1280, 900);
+
+  // ------------------------------------------------------------ T1: theme button, same key, values and labels as the site (003)
+  await go("theme=light");
+  await b.ev(`localStorage.removeItem("eleven-theme")`);
+  await go("t1");
+  const thm = async () => b.ev(`[document.documentElement.dataset.theme||null,localStorage.getItem("eleven-theme"),document.getElementById("themeBtn").getAttribute("aria-label"),
+    getComputedStyle(document.body).backgroundColor===${TOK}("--bg")&&!!document.querySelector("#themeBtn svg")]`);
+  const cyc = [await thm()];
+  for (let i = 0; i < 3; i++) { await b.click("#themeBtn"); await sleep(100); cyc.push(await thm()); }
+  await b.click("#themeBtn"); await go("t1-reload"); cyc.push(await thm());
+  const t1paint = await b.ev(`(()=>{const h=document.head.innerHTML;const i=h.search(/<script>[^<]*eleven-theme/);return i>h.indexOf("Content-Security-Policy")&&i<h.indexOf("<style>")})()`);
+  await b.ev(`localStorage.removeItem("eleven-theme")`);
+  const AUTO = "Theme: auto (follows your system). Switch to light", LIGHT = "Theme: light. Switch to dark", DARK = "Theme: dark. Switch to auto";
+  check("T1", "theme button cycles Auto → Light → Dark → Auto on eleven-theme (absent = auto) with the site's labels; a reload keeps it; the no-flash script sits after the CSP",
+    eq(cyc, [[null, null, AUTO, true], ["light", "light", LIGHT, true], ["dark", "dark", DARK, true], [null, null, AUTO, true], ["light", "light", LIGHT, true]]) && t1paint, { cyc, t1paint });
 
   // ------------------------------------------------------------ L6: a malformed #file= hash
   const l6 = await tryGo("theme=light&file=%E0%A4%A&at=%E0");
