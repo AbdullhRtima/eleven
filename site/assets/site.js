@@ -39,6 +39,13 @@ function paintThemeBtn() {
   tb.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + ICON[s] + "</svg>";
   tb.setAttribute("aria-label", T("theme." + s)); tb.title = T("theme." + s);
 }
+/* Browser chrome colour follows the effective theme: each theme-color meta keeps its media query, a forced theme overrides its colour. */
+const TC = { light: "#F3EFE6", dark: "#0B0D12" };
+function syncThemeColor() {
+  const s = themeNow();
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => { m.content = TC[s === "auto" ? (/dark/.test(m.media) ? "dark" : "light") : s]; });
+}
+syncThemeColor(); onTheme.push(syncThemeColor);
 tb.hidden = false;
 tb.addEventListener("click", () => {
   const next = { auto: "light", light: "dark", dark: "auto" }[themeNow()];
