@@ -25,7 +25,7 @@
 :root {
   color-scheme: light;
   --bg: #F3EFE6; --bg-2: #EAE4D7; --panel: #FAF7F0; --border: #D9D1C0; --border-2: #BFB49E; --text: #16140F; --muted: #5C5649;
-  --accent: #B3321A; --accent-2: #E4502B; --accent-soft: #F6E0D5; --code-bg: #16140F; --code-text: #EDE6D6; --ok: #1F7A4C;
+  --accent: #B3321A; --accent-2: #E4502B; --accent-soft: #F6DED3; --code-bg: #16140F; --code-text: #EDE6D6; --ok: #1F7A4C;
   --accent-ink: #A82E17; --warn: #925800; --warn-soft: #F5E8CB; --ok-ink: #1B6B43; --danger: #A3194F;
   --g-plan: #6A4C9C; --g-tasks: #4E6273; --g-notes: #1D6F68; --g-decision: #9A3D7E; --g-design: #245F95; --gline: #C9BFAA; --grid-a: 60%;
   --shadow: 0 24px 60px -28px rgba(60, 40, 10, .45), 0 2px 6px -2px rgba(60, 40, 10, .12); --scrim: rgba(22, 20, 15, .38);
@@ -142,16 +142,17 @@ main:not(.split) #graphPane { border-left: 0; }
 .row .ico { width: 14px; height: 14px; flex: none; display: grid; place-items: center; font-size: 10px; font-weight: 500; font-family: var(--f-mono); }
 .row .ico svg { width: 14px; height: 14px; }
 .row .name { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.row .sdot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--muted); }
+.row .sdot { width: 12px; height: 12px; flex: none; display: grid; place-items: center; color: var(--muted); }
+.sg { width: 12px; height: 12px; flex: none; display: block; overflow: visible; }
 .row .rid { color: var(--muted); font: 500 12px var(--f-mono); flex: none; }
 .row[data-file] .name, .row[data-dir]:not(:has(.sdot)) .name { font: 13px/1 var(--f-mono); }
 .row.sel .rid { color: inherit; }
 .row .home-ico { width: 14px; text-align: center; flex: none; }
 [role="group"] { margin: 0; padding: 0; }
-.sdot.s-waiting, .chip.s-waiting .dot { background: var(--warn); }
-.sdot.s-working, .chip.s-working .dot { background: var(--accent); }
-.sdot.s-done, .chip.s-done .dot { background: var(--ok); }
-.sdot.s-idle, .sdot.s-new, .chip.s-idle .dot, .chip.s-new .dot { background: var(--muted); }
+.sdot.s-waiting, .chip.s-waiting .dot { color: var(--warn); }
+.sdot.s-working, .chip.s-working .dot { color: var(--accent); }
+.sdot.s-done, .chip.s-done .dot { color: var(--ok); }
+.sdot.s-idle, .sdot.s-new, .chip.s-idle .dot, .chip.s-new .dot { color: var(--muted); }
 .pulse { animation: pulse 1.5s ease-out; }
 @keyframes pulse { from { background-color: var(--accent-soft); } to { background-color: transparent; } }
 
@@ -169,7 +170,7 @@ main:not(.split) #graphPane { border-left: 0; }
 .c-title a { color: inherit; }
 .c-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .chip { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; }
-.chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+.chip .dot { width: 12px; height: 12px; display: grid; place-items: center; }
 .chip.s-waiting { color: var(--warn); } .chip.s-working { color: var(--accent-ink); } .chip.s-done { color: var(--ok-ink); } .chip.s-idle, .chip.s-new { color: var(--muted); }
 .round { font: 12.5px var(--f-mono); color: var(--muted); }
 .round.near { color: var(--danger); }
@@ -270,9 +271,9 @@ a.ref code { color: inherit; }
 .gwrap.td #gsvg { touch-action: pan-y; cursor: default; }
 #gsvg.panning { cursor: grabbing; }
 .lsep { width: 1px; height: 12px; background: var(--border); align-self: center; }
-.legend i.lk { border-radius: 50%; }
-.lk-done { background: var(--ok); } .lk-working { background: var(--accent); } .lk-waiting { background: var(--warn); }
-.lk-progress { background: transparent; box-shadow: inset 0 0 0 1.5px var(--accent); } .lk-todo { background: var(--muted); } .lk-blocked { background: var(--danger); }
+.legend .lk .sg { color: var(--muted); }
+.lk-done .sg { color: var(--ok); } .lk-working .sg { color: var(--accent); } .lk-waiting .sg { color: var(--warn); }
+.lk-progress .sg { color: var(--accent); } .lk-todo .sg { color: var(--muted); } .lk-blocked .sg { color: var(--danger); }
 .legend .t-file { background: var(--muted); opacity: .45; }
 /* work graph */
 .gedge { fill: none; stroke: var(--gline); stroke-width: 1.2px; vector-effect: non-scaling-stroke; }
@@ -296,12 +297,12 @@ a.ref code { color: inherit; }
 .gchev:focus-visible .gchevbg { stroke: var(--accent); stroke-width: 1.5px; }
 .gchevp { fill: none; stroke: var(--muted); stroke-width: 1.6px; stroke-linecap: round; stroke-linejoin: round; }
 .k-decgroup .gbox { fill: none; stroke-dasharray: 3 3; }
-.gdot { fill: var(--muted); }
-.k-done .gdot { fill: var(--ok); } .k-done > .gbox { stroke: color-mix(in srgb, var(--ok) 55%, var(--border)); }
-.k-working .gdot { fill: var(--accent); } .k-working > .gbox { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.8px; }
-.k-waiting .gdot { fill: var(--warn); } .k-waiting > .gbox { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1.8px; }
-.k-progress .gdot { fill: var(--bg); stroke: var(--accent); stroke-width: 1.5px; } .k-progress > .gbox { stroke: var(--accent); stroke-width: 1.5px; stroke-dasharray: 4 3; }
-.k-blocked .gdot { fill: var(--danger); } .k-blocked > .gbox { stroke: var(--danger); }
+.gdot { color: var(--muted); overflow: visible; pointer-events: none; }
+.k-done .gdot { color: var(--ok); } .k-done > .gbox { stroke: color-mix(in srgb, var(--ok) 55%, var(--border)); }
+.k-working .gdot { color: var(--accent); } .k-working > .gbox { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.8px; }
+.k-waiting .gdot { color: var(--warn); } .k-waiting > .gbox { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1.8px; }
+.k-progress .gdot { color: var(--accent); } .k-progress > .gbox { stroke: var(--accent); stroke-width: 1.5px; stroke-dasharray: 4 3; }
+.k-blocked .gdot { color: var(--danger); } .k-blocked > .gbox { stroke: var(--danger); }
 .k-todo .gt.tt { fill: var(--muted); }
 .gfiles > .gbox { fill: none; stroke: var(--border); stroke-dasharray: 3 3; }
 .gchip > .gbox { fill: var(--bg-2); }
@@ -909,6 +910,17 @@ function relTime(ms) {
 // ---------------------------------------------------------------- icons
 const CHEV = `<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3.5 1.5 7 5l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const DOC_SVG = `<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3 1.5h5l3 3v8H3z"/><path d="M8 1.5v3h3"/></svg>`;
+// B1 (003): every status has its own glyph next to its colour, the same on cards, tree, graph and legend (12-unit box, currentColor).
+const GLYPH = {
+  done: `<path d="M2.4 6.4 4.9 8.9 9.6 3.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>`,
+  working: `<circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="6" cy="6" r="2.6" fill="currentColor"/>`,
+  waiting: `<path d="M6 1.8v5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="6" cy="10" r="1.3" fill="currentColor"/>`,
+  progress: `<circle cx="6" cy="6" r="4.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 1.4a4.6 4.6 0 0 0 0 9.2z" fill="currentColor"/>`,
+  todo: `<circle cx="6" cy="6" r="4.4" fill="none" stroke="currentColor" stroke-width="1.5"/>`,
+  blocked: `<path d="M3 3l6 6M9 3 3 9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>`,
+};
+const STATE_GLYPH = { waiting: "waiting", working: "working", done: "done", idle: "progress", new: "todo" };   // item state → glyph
+const glyphSvg = (g, cls = "sg") => `<svg class="${cls}" viewBox="0 0 12 12" aria-hidden="true" focusable="false" data-glyph="${g}">${GLYPH[g] || ""}</svg>`;
 const DIA_SVG = `<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M7 2 12 7 7 12 2 7Z" fill="currentColor"/></svg>`;
 function fileIcon(p) {
   const t = fileType(p);
@@ -958,7 +970,7 @@ function treeRows() {
   for (const it of S.model.items) {
     dirRow(`work/${it.id}`, 1, {
       title: it.title,
-      html: `<span class="sdot s-${it.state}" role="img" aria-label="${esc(it.chip)}"></span><span class="rid mono">${esc(it.num)}</span><span class="name" dir="auto">${esc(it.title)}</span>`,
+      html: `<span class="sdot s-${it.state}" role="img" aria-label="${esc(it.chip)}">${glyphSvg(STATE_GLYPH[it.state])}</span><span class="rid mono">${esc(it.num)}</span><span class="name" dir="auto">${esc(it.title)}</span>`,
     });
   }
   const workLoose = childrenOf("work");
@@ -1039,7 +1051,7 @@ function cardHtml(it, plainText) {   // plainText: the Markdown failed to render
   const titleEl = it.brief ? `<a href="#file=${esc(encodeURIComponent(it.brief))}" data-path="${esc(it.brief)}">${esc(it.title)}</a>` : esc(it.title);
   const sentTarget = it.tasks || it.brief;
   return `<div class="c-title" dir="auto" title="${esc(it.title)}"><span class="id mono">${esc(it.num)}</span>${titleEl}</div>
-    <div class="c-row"><span class="chip s-${it.state}"><span class="dot" aria-hidden="true"></span>${esc(it.chip)}</span>
+    <div class="c-row"><span class="chip s-${it.state}"><span class="dot" aria-hidden="true">${glyphSvg(STATE_GLYPH[it.state])}</span>${esc(it.chip)}</span>
       ${it.round ? `<span class="round${near ? " near" : ""}">Round ${it.round.n} of ${it.round.max}</span>` : ""}</div>
     <div class="sent" dir="auto"${sentTarget ? ` data-go="${esc(sentTarget)}" role="link" tabindex="0"` : ""}>${sentence}</div>
     <button class="more" hidden>Show more</button>
@@ -1370,8 +1382,9 @@ function renderNoLedger() {
 // ---------------------------------------------------------------- work graph (plan.md "Change 2026-11-01")
 // Project → items → tasks → outputs. Deterministic tree: left-to-right when the box is wide, top-down (indented) when narrow.
 const LEGEND = [["done", "Done"], ["working", "Working (NEXT)"], ["waiting", "Waiting on you"], ["progress", "In progress"], ["todo", "To do"], ["blocked", "Blocked"]];
+const KIND_LABEL = Object.fromEntries(LEGEND.map(([k, n]) => [k, n.replace(" (NEXT)", "")]));
 const LEGEND_OUT = [["report", "Report", ""], ["design", "Design doc", ""], ["html", "HTML", " sq"], ["decision", "Decision", " dia"], ["file", "Item file", ""]];
-$("#legend").innerHTML = LEGEND.map(([k, n]) => `<span><i class="lk lk-${k}"></i>${n}</span>`).join("") +
+$("#legend").innerHTML = LEGEND.map(([k, n]) => `<span class="lk lk-${k}">${glyphSvg(k)}${n}</span>`).join("") +
   `<span class="lsep" aria-hidden="true"></span>` + LEGEND_OUT.map(([t, n, c]) => `<span><i class="t-${t}${c}"></i>${n}</span>`).join("");
 const G = { k: 1, x: 0, y: 0, key: "", sizeKey: "", fitted: false, hover: null, clicked: null, collapsed: new Set(), seen: new Set(), mode: "ltr", w: 0, h: 0 };
 const SVGNS = "http://www.w3.org/2000/svg";
@@ -1583,8 +1596,11 @@ function drawNode(n, gn) {
     }
   } else if (n.kind === "task") {
     const t = n.t;
-    tip.textContent = `#${t.n} · ${t.role}\n${t.text}\nStatus: ${t.status || "?"}\n${t.report ? "Opens " + t.report : "Opens tasks.md"}`;
-    el("circle", { cx: 13, cy: 14, r: 4, class: "gdot" }, g);
+    const word = KIND_LABEL[t.kind] || t.kind;
+    tip.textContent = `#${t.n} · ${t.role}\n${t.text}\nStatus: ${word}${t.status && t.status.toLowerCase() !== word.toLowerCase() ? ` (${t.status})` : ""}\n${t.report ? "Opens " + t.report : "Opens tasks.md"}`;
+    g.setAttribute("aria-label", `Task ${t.n}, ${t.role}: ${t.text}. Status: ${word}`);
+    const gl = el("svg", { class: "gdot", x: 7, y: 8, width: 12, height: 12, viewBox: "0 0 12 12", "aria-hidden": "true", "data-glyph": t.kind }, g);
+    gl.innerHTML = GLYPH[t.kind] || "";
     text(g, 23, 18, `#${t.n} · ${t.role}`, "b s");
     text(g, 12, 33, cut(t.text, Math.min(40, chars(22))), "s tt");
   } else {

@@ -209,8 +209,8 @@ try {
     if (theme !== "light") await go("theme=" + theme);
     const looks = await b.ev(`(()=>{const tok=${TOK};const T=Object.fromEntries(["--warn","--accent","--accent-ink","--ok","--ok-ink","--muted","--warn-soft","--panel"].map((v)=>[v,tok(v)]));
       return {T,cards:[...document.querySelectorAll('.card')].map((c)=>{const chip=c.querySelector('.chip'),cs=getComputedStyle(c),sd=document.querySelector('#tree [data-dir="work/'+c.dataset.item+'"] .sdot');
-        return {id:c.dataset.item,card:c.className,chip:chip.className,label:chip.textContent.trim(),dot:getComputedStyle(chip.querySelector('.dot')).backgroundColor,ink:getComputedStyle(chip).color,
-          bl:cs.borderLeftColor+" "+cs.borderLeftWidth,bg:cs.backgroundColor,tree:sd&&[sd.className,getComputedStyle(sd).backgroundColor]}})}})()`);
+        return {id:c.dataset.item,card:c.className,chip:chip.className,label:chip.textContent.trim(),dot:getComputedStyle(chip.querySelector('.dot')).color,ink:getComputedStyle(chip).color,
+          bl:cs.borderLeftColor+" "+cs.borderLeftWidth,bg:cs.backgroundColor,tree:sd&&[sd.className,getComputedStyle(sd).color]}})}})()`);
     const bad = [];
     for (const c of looks.cards) {
       const [state, label] = want[c.id] || [];
@@ -352,14 +352,14 @@ try {
 
   // ------------------------------------------------------------ N1c: every graph node shows its status by class, label and colour (light + dark)
   const KIND_LOOK = { waiting: ["--warn", "--warn", "--warn-soft"], working: ["--accent", "--accent", "--accent-soft"], todo: ["--muted", "--border", "--panel"],
-    done: ["--ok", null, "--panel"], progress: [null, "--accent", "--panel"], blocked: ["--danger", "--danger", "--panel"] };
+    done: ["--ok", null, "--panel"], progress: ["--accent", "--accent", "--panel"], blocked: ["--danger", "--danger", "--panel"] };
   const ITEM_LOOK = { waiting: ["--warn", "Waiting on you"], working: ["--accent-ink", "Working"], done: ["--ok-ink", "Done"], idle: ["--muted", "Waiting for the CTO"], new: ["--muted", "Not started"] };
   const ITEM_BAR = { waiting: "--warn", working: "--accent", done: "--ok", idle: "--muted", new: "--muted" };
   for (const theme of ["light", "dark"]) {
     if (theme !== "light") await go("theme=dark&graph");
     const gl = await b.ev(`(()=>{const tok=${TOK};const T=Object.fromEntries(["--warn","--warn-soft","--accent","--accent-soft","--accent-ink","--muted","--border","--panel","--ok","--ok-ink","--danger"].map((v)=>[v,tok(v)]));
       const kinds=Object.fromEntries(workModel().items.flatMap((x)=>x.tasks.map((t)=>[t.key,t.kind])));
-      return {T,kinds,tasks:[...document.querySelectorAll('#gNodes .k-task')].map((g)=>({key:g.dataset.key,cls:g.getAttribute('class'),dot:getComputedStyle(g.querySelector('.gdot')).fill,
+      return {T,kinds,tasks:[...document.querySelectorAll('#gNodes .k-task')].map((g)=>({key:g.dataset.key,cls:g.getAttribute('class'),dot:getComputedStyle(g.querySelector('.gdot')).color,
           stroke:getComputedStyle(g.querySelector('.gbox')).stroke,fill:getComputedStyle(g.querySelector('.gbox')).fill})),
         items:[...document.querySelectorAll('#gNodes .k-item')].map((g)=>({key:g.dataset.key,cls:g.getAttribute('class'),label:g.querySelector('.gt.st')?.textContent,
           bar:getComputedStyle(g.querySelector('.gsbar')).fill,ink:getComputedStyle(g.querySelector('.gt.st')).fill}))}})()`);
@@ -379,6 +379,48 @@ try {
     check("N1", `${theme}: every task and item node in the graph shows its status by class, label and colour; waiting, working and to-do differ`,
       gl.tasks.length >= 10 && gl.items.length === 12 && bad.length === 0 && wrongKind.length === 0 && new Set(dots).size === 3 && !dots.includes(undefined), { bad, wrongKind, dots, n: [gl.tasks.length, gl.items.length] });
   }
+
+  // ------------------------------------------------------------ S1 (003 B1): status is never colour only. Every status draws its own glyph,
+  // the same shape on Home cards, tree dots, graph task nodes and the legend; no two statuses share one; glyphs are aria-hidden, ≥ 10 px,
+  // and the status word is in text or an accessible label. Task kinds the fixture lacks (in progress, blocked) are drawn with the real drawNode.
+  const LEGEND_KINDS = ["done", "working", "waiting", "progress", "todo", "blocked"];
+  const GLYPH_OF = { done: "done", working: "working", waiting: "waiting", progress: "progress", todo: "todo", blocked: "blocked", idle: "progress", new: "todo" };
+  const SIG = `((svg)=>{if(!svg)return null;const r=svg.getBoundingClientRect();let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    for(const c of svg.children){try{const q=c.getBBox();if(q.width||q.height){x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x+q.width);y1=Math.max(y1,q.y+q.height)}}catch(e){}}
+    return {glyph:svg.getAttribute("data-glyph"),shape:svg.innerHTML.replace(/\\s+/g," ").trim(),hidden:svg.getAttribute("aria-hidden"),px:Math.min(r.width,r.height),
+      units:+svg.getAttribute("width")||null,ink:x1>x0?Math.max(x1-x0,y1-y0):0}})`;
+  await go("theme=light");
+  const s1home = await b.ev(`(()=>{const sig=${SIG};return {
+    cards:[...document.querySelectorAll('.card')].map((c)=>({st:c.className.match(/s-(\\w+)/)?.[1],word:c.querySelector('.chip').textContent.trim(),...sig(c.querySelector('.chip .dot svg'))})),
+    tree:[...document.querySelectorAll('#tree .sdot')].map((d)=>({st:d.className.match(/s-(\\w+)/)?.[1],word:d.getAttribute('role')==='img'?d.getAttribute('aria-label'):'',...sig(d.querySelector('svg'))}))}})()`);
+  await go("theme=light&graph");
+  const s1graph = await b.ev(`(()=>{const sig=${SIG};const kinds=${JSON.stringify(LEGEND_KINDS)};
+    const legend=[...document.querySelectorAll('#legend .lk')].map((s)=>({st:s.className.match(/lk-(\\w+)/)?.[1],word:s.textContent.trim(),...sig(s.querySelector('svg'))}));
+    const task=(g)=>({st:g.getAttribute('class').match(/k-task k-(\\w+)/)?.[1],word:g.getAttribute('aria-label')||'',tip:g.querySelector('title')?.textContent||'',...sig(g.querySelector('.gdot'))});
+    const real=[...document.querySelectorAll('#gNodes .k-task')].map(task);
+    const tmp=document.createElementNS("http://www.w3.org/2000/svg","g");document.getElementById('gNodes').append(tmp);
+    kinds.forEach((k,i)=>drawNode({kind:"task",key:"t:s1:"+k,x:0,y:i*60,w:240,h:46,t:{n:String(i+1),role:"qa",text:"Glyph check",status:"",kind:k}},tmp));
+    const synth=[...tmp.querySelectorAll('.k-task')].map(task);tmp.remove();
+    return {legend,real,synth}})()`);
+  const WORD = { done: "Done", working: "Working", waiting: "Waiting on you", progress: "In progress", todo: "To do", blocked: "Blocked" };
+  const s1all = [...s1home.cards.map((x) => ["card", x]), ...s1home.tree.map((x) => ["tree", x]), ...s1graph.legend.map((x) => ["legend", x]),
+    ...s1graph.real.map((x) => ["graph", x]), ...s1graph.synth.map((x) => ["graph-synth", x])];
+  const s1bad = s1all.filter(([where, x]) => {
+    const g = GLYPH_OF[x.st];
+    const sizeOk = where.startsWith("graph") ? x.units >= 10 : x.px >= 10;
+    const wordOk = where.startsWith("graph") ? x.word.endsWith("Status: " + WORD[x.st]) && x.tip.includes("Status: " + WORD[x.st]) : !!x.word;
+    return !g || x.glyph !== g || x.hidden !== "true" || !x.shape || x.ink < 5 || !sizeOk || !wordOk;
+  });
+  const shapeOf = {};
+  for (const [, x] of s1all) if (x.glyph) (shapeOf[x.glyph] ||= new Set()).add(x.shape);
+  const mixed = Object.entries(shapeOf).filter(([, v]) => v.size !== 1).map(([k]) => k);
+  const shapes = LEGEND_KINDS.map((k) => [...(shapeOf[k] || [])][0]);
+  const covered = (list) => [...new Set(list.map((x) => x.st))].sort().join(",");
+  check("S1", "every status has its own glyph (check, ringed dot, !, half circle, hollow circle, ×) on cards, tree, graph tasks and legend; no two statuses share one; aria-hidden, ≥ 10 px, status word in text or label",
+    s1bad.length === 0 && mixed.length === 0 && new Set(shapes).size === 6 && !shapes.includes(undefined) && !shapes.includes("") &&
+      covered(s1home.cards) === "done,idle,waiting,working" && covered(s1home.tree) === covered(s1home.cards) &&
+      covered(s1graph.legend) === [...LEGEND_KINDS].sort().join(",") && covered(s1graph.synth) === covered(s1graph.legend) && s1graph.real.length >= 10,
+    { bad: s1bad.slice(0, 6), mixed, distinct: new Set(shapes).size, cards: covered(s1home.cards), legend: covered(s1graph.legend), synth: covered(s1graph.synth), real: s1graph.real.length });
 
   // ------------------------------------------------------------ N1b: real graph interactions (1280 px: left-to-right, pan/zoom, Fit, collapse, clicks)
   await go("theme=light&graph");
