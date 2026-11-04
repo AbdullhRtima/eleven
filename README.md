@@ -91,8 +91,10 @@ the brief and accept the result.
 
 | Guard | Rule |
 |---|---|
-| Round budget | At most **10** manage → execute rounds per item, then it stops and reports to you. |
-| No progress | The same task to the same role twice? Stop and ask you. |
+| Round budget | At most **10** manage → execute rounds per item, then one final best attempt, marked unverified, and a report to you. |
+| No progress | The same task to the same role twice? Stop and ask you. Failed twice? Try a different approach. |
+| Last green | Work that passed its checks is never overwritten by something that doesn't pass. |
+| No repro, no rewrite | A bug claim needs a command that reproduces it before anyone rewrites working code. |
 | Small memory | `plan.md` ≤ 4,000 chars, `notes.md` ≤ 8,000. Rewritten, never appended. |
 | Open questions | They pause the loop. Nobody guesses about intent, money, data or security. |
 | Evidence | Reports paste the real build and test output. "Should work" isn't evidence. |

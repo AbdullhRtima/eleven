@@ -86,8 +86,9 @@ true and still useful, and delete the rest.
 
 ### Guards
 
-- **Round budget:** at most **10** manage→execute rounds per item. At the limit, stop and report to the user.
+- **Round budget:** at most **10** manage→execute rounds per item. At the limit, run one final task: the best complete result the ledger supports, marked **unverified** in its report. Then stop and report to the user.
 - **No progress:** if the CTO is about to give the same task to the same role again, stop and ask the user.
+- **Switch, don't polish:** if a task has failed twice, the next task must try a different approach from `notes.md`, or ask the user. Re-wording the same task doesn't count as a new approach.
 - **Out of context:** if a worker runs out of room, a fresh call summarises the partial work into the worker's report and the loop continues from there.
 - **Open questions** pause the loop and go to the user. **Never guess** about product intent, money, data, security or anything you can't undo.
 - The user can interrupt at any time. Their word overrides the plan.
@@ -99,14 +100,17 @@ true and still useful, and delete the rest.
 3. **Think on disk first.** Before writing code, put your approach and its risks in `notes.md`. Writing the reasoning down before coding is what makes the loop work.
 4. **Smallest change that solves it.** Match the style around you. No drive-by refactors.
 5. **Prove it.** Write or update a test that fails without your change. Run the build, linter and tests. Paste the real output into your report. Don't write "should work".
-6. **Stay in your lane.** Don't edit `brief.md` or `tasks.md` unless your role owns them. Never commit secrets.
-7. **Be honest.** If something failed, was skipped or is uncertain, say so in the report. A truthful red beats a fake green.
-8. **Finish with a report** ([template](templates/report.md)). It is the only thing the CTO reads from you.
+6. **Keep the last green.** Never overwrite work that passed its checks unless the new version passes them too. The CTO writes the last passing commit (or file version) in `plan.md`, so it can always be restored.
+7. **No repro, no rewrite.** A bug claim must come with a command that reproduces it. Without one, nobody rewrites working code; check the claim first.
+8. **Stay in your lane.** Don't edit `brief.md` or `tasks.md` unless your role owns them. Never commit secrets.
+9. **Be honest.** If something failed, was skipped or is uncertain, say so in the report. A truthful red beats a fake green.
+10. **Finish with a report** ([template](templates/report.md)). It is the only thing the CTO reads from you.
 
 ## Definition of done
 
 An item is done only when **all** of these hold:
 
+- its output exists (code, file or document) and its checks passed. Nobody can mark an item done on a claim alone
 - every acceptance criterion in `brief.md` is checked by QA, with evidence
 - build, lint, type-check and tests pass in CI (or locally if there is no CI yet)
 - security has no open high-severity finding on the change
