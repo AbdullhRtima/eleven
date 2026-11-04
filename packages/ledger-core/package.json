@@ -1,0 +1,13 @@
+{
+  "name": "@eleven/ledger-core",
+  "version": "0.1.0",
+  "description": "Pure parser for the eleven ledger (tasks.md, brief.md, reports, graph links). Generated from ui/index.html.",
+  "license": "MIT",
+  "type": "module",
+  "main": "index.js",
+  "exports": "./index.js",
+  "files": ["index.js"],
+  "scripts": {
+    "test": "node --test"
+  }
+}
