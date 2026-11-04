@@ -477,6 +477,7 @@ function mdInline(text) {
 }
 
 // ---------------------------------------------------------------- ledger rules (notes.md)
+/* @ledger-core:start */
 const KIT_DIRS = new Set(["agents", "templates", "docs", "ui"]);
 const keepFile = (name) => /\.(md|html?)$/i.test(name);
 const isMd = (p) => /\.md$/i.test(p);
@@ -532,9 +533,9 @@ function openQuestions(text) {
   return { md: empty ? "" : md, count };
 }
 
-function itemModel(id) {
-  const t = S.files.get(`work/${id}/tasks.md`)?.text;
-  const b = S.files.get(`work/${id}/brief.md`)?.text;
+function itemModel(id, files) {   // files: Map of ledger path -> { text }
+  const t = files.get(`work/${id}/tasks.md`)?.text;
+  const b = files.get(`work/${id}/brief.md`)?.text;
   const title = b?.match(/^#\s+Brief:\s*(.+)$/m)?.[1]?.trim() || b?.match(/^#\s+(.+)$/m)?.[1]?.trim() || id.replace(/^\d+-/, "");
   const rm = t?.match(/^Round:\s*(\d+)\s*\/\s*(\d+)/m);
   const round = rm ? { n: +rm[1], max: +rm[2] } : null;
@@ -595,27 +596,48 @@ function refsIn(raw) { // candidate path strings in a raw Markdown line
 }
 const RE_DEC = /\bdecisions?\s+(?:#\s*)?(\d{4})\b/gi;
 const normPath = (p) => { const o = []; for (const s of p.split("/")) { if (s === "..") o.pop(); else if (s && s !== ".") o.push(s); } return o.join("/"); };
-function resolveRef(raw, from) {
+function resolveRef(raw, from, files) {   // files: Map or Set keyed by ledger path
   let p = String(raw).split("#")[0].split("?")[0];
   try { p = decodeURIComponent(p); } catch {}
   if (!p || /^[a-z][a-z0-9+.-]*:/i.test(p) || p.startsWith("/")) return null;
-  const has = (c) => S.files.has(c);
+  const has = (c) => files.has(c);
   if (p.startsWith("eleven/")) { const c = normPath(p.slice(7)); return has(c) ? c : null; }
   const dir = from.split("/").slice(0, -1).join("/"), it = itemOf(from);
   for (const c of [dir ? dir + "/" + p : p, it && `work/${it}/${p}`, p]) if (c && has(normPath(c))) return normPath(c);
   if (it && !p.includes("/")) {
-    const m = [...S.files.keys()].filter((n) => n.startsWith(`work/${it}/`) && n.endsWith("/" + p));
+    const m = [...files.keys()].filter((n) => n.startsWith(`work/${it}/`) && n.endsWith("/" + p));
     if (m.length === 1) return m[0];
   }
   return null;
 }
-const decisionNode = (num) => [...S.files.keys()].find((n) => n.startsWith(`decisions/${num}-`)) || null;
+const decisionNode = (num, files) => [...files.keys()].find((n) => n.startsWith(`decisions/${num}-`)) || null;
+const CORE = ["brief.md", "tasks.md", "plan.md", "notes.md"];
+const normN = (s) => strip(s).toLowerCase().replace(/^#\s*/, "").replace(/^0+(?=\d)/, "");
+const plain = (s) => String(s || "").replace(/\*\*|__|`/g, "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").trim();
+
+function taskKind(r) {
+  const k = statusKind(r.status);
+  if (k === "next") return isUserRole(r.role) ? "waiting" : "working";
+  if (k === "done") return "done";
+  if (k === "blocked" || k === "failed") return "blocked";
+  if (/^(in[ -]?progress|working|wip|doing)\b/.test(strip(r.status).toLowerCase())) return "progress";
+  return "todo";
+}
+// Report → task: the "# Report: task 4b, …" heading wins, then the file name (02b-designer.md → 2b). Only ids that exist count.
+function reportTask(path, text, ids) {
+  const h = (text || "").match(/^#\s+Report:\s*task\s+#?\s*(\d+[a-z]?)\b/im)?.[1];
+  if (h && ids.has(normN(h))) return normN(h);
+  const f = baseName(path).match(/^(\d+[a-z]?)-/i)?.[1];
+  if (f && ids.has(normN(f))) return normN(f);
+  return null;
+}
+/* @ledger-core:end */
 
 function buildModel() {
   const ids = new Set();
   for (const d of S.dirs) { const m = d.match(/^work\/([^/]+)$/); if (m) ids.add(m[1]); }
   for (const p of S.files.keys()) { const it = itemOf(p); if (it) ids.add(it); }
-  const items = [...ids].sort().map(itemModel);
+  const items = [...ids].sort().map((id) => itemModel(id, S.files));
   return { items, byId: new Map(items.map((i) => [i.id, i])) };
 }
 
@@ -1172,7 +1194,7 @@ function enhanceHtml(html, from) {
     if (href.startsWith("#")) continue;
     const ext = /^https?:\/\//i.test(href) ? href : href.startsWith("//") ? "https:" + href : null;
     if (ext) { a.setAttribute("href", ext); a.setAttribute("target", "_blank"); a.setAttribute("rel", "noopener noreferrer"); a.dataset.ext = "1"; continue; }
-    const r = href && !/^[a-z][a-z0-9+.-]*:/i.test(href) ? resolveRef(href, from) : null;
+    const r = href && !/^[a-z][a-z0-9+.-]*:/i.test(href) ? resolveRef(href, from, S.files) : null;
     if (r) { a.dataset.path = r; a.setAttribute("class", "ref"); a.setAttribute("href", "#file=" + encodeURIComponent(r)); const frag = href.split("#")[1]; if (frag) a.dataset.anchor = frag; continue; }
     a.removeAttribute("href");
     if (href) {
@@ -1197,7 +1219,7 @@ function enhanceHtml(html, from) {
   for (const c of root.querySelectorAll("code")) {
     if (c.closest("pre") || c.closest("a")) continue;
     const m = c.textContent.trim().match(/^([^`<>]+?\.(?:md|html?))(?::\d+(?:[–-]\d+)?)?$/iu);
-    const r = m && resolveRef(m[1], from);
+    const r = m && resolveRef(m[1], from, S.files);
     if (r) { const a = linkFor(r); c.replaceWith(a); a.appendChild(c); }
   }
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -1209,7 +1231,7 @@ function enhanceHtml(html, from) {
     if (!/\.(md|html?)|decision/i.test(s)) continue;
     let last = 0, frag = null;
     for (const m of s.matchAll(RE)) {
-      const target = m[1] ? resolveRef(m[1], from) : decisionNode(m[2]);
+      const target = m[1] ? resolveRef(m[1], from, S.files) : decisionNode(m[2], S.files);
       if (!target) continue;
       frag ||= document.createDocumentFragment();
       frag.append(s.slice(last, m.index));
@@ -1388,27 +1410,8 @@ $("#legend").innerHTML = LEGEND.map(([k, n]) => `<span class="lk lk-${k}">${glyp
   `<span class="lsep" aria-hidden="true"></span>` + LEGEND_OUT.map(([t, n, c]) => `<span><i class="t-${t}${c}"></i>${n}</span>`).join("");
 const G = { k: 1, x: 0, y: 0, key: "", sizeKey: "", fitted: false, hover: null, clicked: null, collapsed: new Set(), seen: new Set(), mode: "ltr", w: 0, h: 0 };
 const SVGNS = "http://www.w3.org/2000/svg";
-const CORE = ["brief.md", "tasks.md", "plan.md", "notes.md"];
-const normN = (s) => strip(s).toLowerCase().replace(/^#\s*/, "").replace(/^0+(?=\d)/, "");
 const cut = (s, n) => { s = String(s).replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, Math.max(1, n - 1)).trimEnd() + "…" : s; };
-const plain = (s) => String(s || "").replace(/\*\*|__|`/g, "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").trim();
 
-function taskKind(r) {
-  const k = statusKind(r.status);
-  if (k === "next") return isUserRole(r.role) ? "waiting" : "working";
-  if (k === "done") return "done";
-  if (k === "blocked" || k === "failed") return "blocked";
-  if (/^(in[ -]?progress|working|wip|doing)\b/.test(strip(r.status).toLowerCase())) return "progress";
-  return "todo";
-}
-// Report → task: the "# Report: task 4b, …" heading wins, then the file name (02b-designer.md → 2b). Only ids that exist count.
-function reportTask(path, text, ids) {
-  const h = (text || "").match(/^#\s+Report:\s*task\s+#?\s*(\d+[a-z]?)\b/im)?.[1];
-  if (h && ids.has(normN(h))) return normN(h);
-  const f = baseName(path).match(/^(\d+[a-z]?)-/i)?.[1];
-  if (f && ids.has(normN(f))) return normN(f);
-  return null;
-}
 function workModel() {
   const pt = S.files.get("project.md")?.text;
   const project = { title: pt?.match(/^#\s+(?:Project:\s*)?(.+)$/m)?.[1]?.trim() || S.source?.name || "project", path: S.files.has("project.md") ? "project.md" : null };
@@ -1430,11 +1433,11 @@ function workModel() {
       const reps = (reports.get(n) || []).sort();
       reps.forEach(add);
       for (const ref of refsIn(r.raw)) {
-        const p = resolveRef(ref, tp);
+        const p = resolveRef(ref, tp, S.files);
         if (p && !core.has(p) && (p.startsWith(pre) || p.startsWith("decisions/"))) add(p);
       }
-      for (const m of r.raw.matchAll(RE_DEC)) add(decisionNode(m[1]));
-      for (const rp of reps) for (const m of (S.files.get(rp).text || "").matchAll(RE_DEC)) add(decisionNode(m[1]));
+      for (const m of r.raw.matchAll(RE_DEC)) add(decisionNode(m[1], S.files));
+      for (const rp of reps) for (const m of (S.files.get(rp).text || "").matchAll(RE_DEC)) add(decisionNode(m[1], S.files));
       outs.forEach((p) => { if (!producers.has(p)) producers.set(p, []); producers.get(p).push(key); });
       return { key, n: strip(r.n) || String(i + 1), role: strip(r.role), text: plain(r.task), status: strip(r.status), kind: taskKind(r), report: reps[0] || null, outs };
     });
