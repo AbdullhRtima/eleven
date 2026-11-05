@@ -10,6 +10,7 @@ const concat = (...a) => {
   return out;
 };
 
+const PAIRING_ID = /^[A-Za-z0-9_-]{8,64}$/;
 export const sha256 = async (bytes) => new Uint8Array(await subtle().digest("SHA-256", bytes));
 // H(x) as the spec writes it: SHA-256 as b64u (43 chars)
 export const H = async (bytes) => b64uEncode(await sha256(bytes));
@@ -45,7 +46,8 @@ export async function fingerprint(mkxSpki, msigSpki) {
 // pairingId is UTF-8, secret is raw bytes, the salt is the raw 32-byte hash. `root` is returned as a
 // non-extractable HKDF CryptoKey; the ECDH output never leaves WebCrypto.
 export async function deriveRoot({ privateKey, peerPublicKey, pairingId, secret }) {
-  if (typeof pairingId !== "string" || !(secret instanceof Uint8Array) || secret.length === 0) throw new TypeError("deriveRoot: bad pairingId or secret");
+  if (typeof pairingId !== "string" || !PAIRING_ID.test(pairingId)) throw new TypeError("deriveRoot: bad pairingId");
+  if (!(secret instanceof Uint8Array) || secret.length !== 32) throw new TypeError("deriveRoot: the secret must be exactly 32 bytes");
   const ikm = await subtle().deriveKey({ name: "ECDH", public: peerPublicKey }, privateKey, { name: "HKDF" }, false, ["deriveBits"]);
   const salt = await sha256(concat(enc.encode(pairingId), secret));
   const rootBits = await subtle().deriveBits({ name: "HKDF", hash: "SHA-256", salt, info: enc.encode("eleven/v1/root") }, ikm, 256);

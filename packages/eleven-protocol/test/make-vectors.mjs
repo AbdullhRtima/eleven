@@ -3,7 +3,7 @@
 import { writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { b64uEncode, generateKeyAgreementKeyPair, exportPublicKey, fingerprint, deriveMessageKeys, deriveRoot, jcs } from "../src/index.js";
-import { _sealWithNonceForVectors } from "../src/envelope.js";
+import { sealWithFixedNonce } from "./vector-seal.mjs";
 
 const out = fileURLToPath(new URL("./vectors.json", import.meta.url));
 if (existsSync(out) && !process.argv.includes("--force")) { console.error("vectors.json exists; pass --force to overwrite"); process.exit(1); }
@@ -15,7 +15,7 @@ const mkx = await generateKeyAgreementKeyPair({ extractable: true });
 const pkx = await generateKeyAgreementKeyPair({ extractable: true });
 const msig = await subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
 const pairingId = "pr_dGVzdFBhaXJpbmcwMDAwMQ";
-const secret = Uint8Array.from({ length: 16 }, (_, i) => 0xa0 + i);
+const secret = Uint8Array.from({ length: 32 }, (_, i) => 0xa0 + i);
 const vault = "vlt_Q2xhc3NpY0FjbWVOb3Rlcw";
 const machine = "dev_bWFjaGluZUFjbWUwMDAx";
 const phone = "dev_cGhvbmVQaXhlbDgwMDAx";
@@ -30,7 +30,7 @@ const fpr = await fingerprint(mkxSpki, msigSpki);
 
 const nonce = (n) => Uint8Array.from({ length: 12 }, (_, i) => n + i);
 const mk = async (name, fields, inner, key, n) => {
-  const env = await _sealWithNonceForVectors(fields, inner, key, nonce(n));
+  const env = await sealWithFixedNonce(fields, inner, key, nonce(n));
   return { name, key: key === keys.m2p ? "m2p" : "p2m", envelope: env, inner: JSON.parse(jcs(inner)) };
 };
 const base = { vault, id: "5b0c6f8e-1f2a-4c3d-9e4f-0a1b2c3d4e5f", ts: 1793779200000 };

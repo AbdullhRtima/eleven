@@ -64,7 +64,12 @@ function checkInner(type, inner) {
 
 export const newId = () => globalThis.crypto.randomUUID();
 
-async function sealWithNonce(fields, inner, key, nonce) {
+// seal(envelopeFields, plaintextObject, key) -> envelope. A fresh random 96-bit nonce every call, generated here:
+// no function in src/ takes a nonce from its caller (the checked-in vectors are sealed by test/vector-seal.mjs).
+// fields: { type, vault, from, to, fid?, id?, ts? }. id (UUID v4) and ts default to fresh values. v and epoch are set here.
+// plaintextObject: { t, seq, ts?, ...body }; ts defaults to now.
+export async function seal(fields, inner, key) {
+  const nonce = globalThis.crypto.getRandomValues(new Uint8Array(NONCE_BYTES));
   const type = fields?.type;
   if (!Object.hasOwn(INNER_TYPES, type)) fail("bad_envelope", "type has no ciphertext");
   checkKey(key, "encrypt");
@@ -86,26 +91,21 @@ async function sealWithNonce(fields, inner, key, nonce) {
   return env;
 }
 
-// seal(envelopeFields, plaintextObject, key) -> envelope. A fresh random 96-bit nonce every call.
-// fields: { type, vault, from, to, fid?, id?, ts? }. id (UUID v4) and ts default to fresh values. v and epoch are set here.
-// plaintextObject: { t, seq, ts?, ...body }; ts defaults to now.
-export function seal(fields, inner, key) {
-  return sealWithNonce(fields, inner, key, globalThis.crypto.getRandomValues(new Uint8Array(NONCE_BYTES)));
-}
-
-// For checked-in test vectors only. NOT exported from index.js (package "exports" hides this file).
-export const _sealWithNonceForVectors = sealWithNonce;
-
-// open(envelope, key) -> inner object. Every failure throws a ProtocolError with a coarse code and no
+// open(envelope, key, expect?) -> inner object. expect = { vault?, from?, to? }: when given, the envelope must carry
+// exactly those values, or open fails with the same coarse error as a wrong key (nothing is decrypted first). Every failure throws a ProtocolError with a coarse code and no
 // detail an attacker could use as an oracle (4.4); callers drop the message and count it.
 // Returns the inner object only; the caller checks seq (rollback) and actionId (dedupe) against its own state.
-export async function open(envelope, key) {
+export async function open(envelope, key, expect) {
   const e = envelope;
   if (e === null || typeof e !== "object") fail("bad_envelope");
   if (e.v !== PROTOCOL_VERSION) fail("bad_envelope", "unsupported version");
   if (e.epoch !== 0) fail("bad_epoch", "unknown epoch");
   if (!Object.hasOwn(INNER_TYPES, e.type)) fail("bad_envelope", "type has no ciphertext");
   checkKey(key, "decrypt");
+  if (expect !== undefined) {
+    if (expect === null || typeof expect !== "object") fail("bad_key", "expect must be an object");
+    for (const f of ["vault", "from", "to"]) if (expect[f] !== undefined && e[f] !== expect[f]) fail("decrypt_failed");
+  }
   checkFid(e.type, e.fid);
   if (typeof e.n !== "string" || typeof e.ct !== "string") fail("bad_envelope");
   if (!isTs(e.ts) || typeof e.id !== "string") fail("bad_envelope");
