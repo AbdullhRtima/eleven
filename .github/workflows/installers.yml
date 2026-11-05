@@ -161,7 +161,7 @@ jobs:
           try --with-sync "$p"; [ "$rc" -eq 0 ] || fail "exit $rc"
           [ "$(cat "$p/eleven/.sync")" = "sync=1" ] || fail "eleven/.sync is not sync=1"
           bin="$p/eleven/.sync-bin"
-          if [ "$INSTALLER" = sh ]; then launcher="$bin/eleven-sync"; else launcher="$bin/eleven-sync.cmd"; fi
+          if [ "$RUNNER_OS" = Windows ] && [ "$INSTALLER" != sh ]; then launcher="$bin/eleven-sync.cmd"; else launcher="$bin/eleven-sync"; fi
           [ -f "$launcher" ] || fail "launcher missing: $launcher"
           for f in eleven-sync/bin/eleven-sync.js ledger-core/index.js eleven-protocol/src/index.js; do
             [ -f "$bin/packages/$f" ] || fail "missing packages/$f"
@@ -170,7 +170,7 @@ jobs:
           [ ! -e "$bin/node_modules" ] || fail "npm was used"
           [ -z "$(git -C "$p" status --porcelain)" ] || fail ".sync files show up in git status"
           run_launcher() {
-            if [ "$INSTALLER" = sh ]; then "$bin/eleven-sync" "$@"; else MSYS_NO_PATHCONV=1 cmd.exe //c "$(cygpath -w "$bin/eleven-sync.cmd")" "$@"; fi
+            if [ "$launcher" = "$bin/eleven-sync.cmd" ]; then MSYS_NO_PATHCONV=1 cmd.exe /d /c "$(cygpath -w "$launcher")" "$@"; else "$launcher" "$@"; fi
           }
           ver="$(run_launcher --version)" || fail "the launcher failed on --version"
           echo "launcher: $ver"
