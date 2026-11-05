@@ -13,6 +13,8 @@
 # Flags are read from $args by hand: a param block would not accept "--update" (PowerShell takes it as a path).
 # Works on Windows PowerShell 5.1 and PowerShell 7.
 $ErrorActionPreference = "Stop"
+# Windows PowerShell 5.1 has no $IsWindows; it only runs on Windows.
+$onWindows = ($PSVersionTable.PSEdition -eq "Desktop") -or $IsWindows
 
 $Update = $false; $WithSync = $false; $NoSync = $false; $Project = $null
 foreach ($a in $args) {
@@ -171,18 +173,28 @@ function Install-Sync {
         Where-Object { $_.Name -ne "test" -and $_.Name -ne "node_modules" } |
         ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $target -Recurse -Force }
     }
-    # Launchers find their packages next to themselves, wherever the project is. ASCII, CRLF for cmd.
-    $cmd = "@echo off`r`nnode `"%~dp0packages\eleven-sync\bin\eleven-sync.js`" %*`r`n"
-    [IO.File]::WriteAllText((Join-Path $bin "eleven-sync.cmd"), $cmd, [Text.Encoding]::ASCII)
-    $ps1 = "`$dir = Split-Path -Parent `$MyInvocation.MyCommand.Path`r`n& node (Join-Path `$dir `"packages\eleven-sync\bin\eleven-sync.js`") @args`r`nexit `$LASTEXITCODE`r`n"
-    [IO.File]::WriteAllText((Join-Path $bin "eleven-sync.ps1"), $ps1, [Text.Encoding]::ASCII)
+    # Launchers find their packages next to themselves, wherever the project is.
+    if ($onWindows) {
+      # ASCII, CRLF for cmd.
+      $cmd = "@echo off`r`nnode `"%~dp0packages\eleven-sync\bin\eleven-sync.js`" %*`r`n"
+      [IO.File]::WriteAllText((Join-Path $bin "eleven-sync.cmd"), $cmd, [Text.Encoding]::ASCII)
+      $ps1 = "`$dir = Split-Path -Parent `$MyInvocation.MyCommand.Path`r`n& node (Join-Path `$dir `"packages\eleven-sync\bin\eleven-sync.js`") @args`r`nexit `$LASTEXITCODE`r`n"
+      [IO.File]::WriteAllText((Join-Path $bin "eleven-sync.ps1"), $ps1, [Text.Encoding]::ASCII)
+      $launcher = Join-Path $bin "eleven-sync.cmd"
+    } else {
+      # pwsh on macOS/Linux: the same sh launcher install.sh writes. LF only.
+      $sh = "#!/bin/sh`ndir=`"`$(cd `"`$(dirname `"`$0`")`" && pwd)`"`nexec node `"`$dir/packages/eleven-sync/bin/eleven-sync.js`" `"`$@`"`n"
+      $launcher = Join-Path $bin "eleven-sync"
+      [IO.File]::WriteAllText($launcher, $sh, [Text.Encoding]::ASCII)
+      & chmod 755 $launcher
+    }
     Set-Content -Path (Join-Path $dest ".sync") -Value "sync=1" -Encoding ASCII
   } catch {
     [Console]::Error.WriteLine("$_")
     [Console]::Error.WriteLine("eleven-sync did not install. The kit itself is installed; retry with -WithSync.")
     return
   }
-  Write-Host "eleven-sync installed: $bin\eleven-sync.cmd"
+  Write-Host "eleven-sync installed: $launcher"
   Write-Host "The phone app is in private beta: it works once your email is on the beta list."
 }
 
