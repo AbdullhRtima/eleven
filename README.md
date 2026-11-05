@@ -56,6 +56,9 @@ If scripts are blocked: `powershell -ExecutionPolicy Bypass -File $HOME\eleven\i
 The installer copies the kit to `my-project/eleven/` and adds `/eleven/` to `.git/info/exclude`, your
 local ignore list. Your `.gitignore` is untouched and nothing shows up in `git status`.
 
+In a terminal, the installer asks once whether you want eleven on your phone (paid, beta). The default
+is no. Add `--with-sync` to say yes up front, or `--no-sync` to skip the question; scripts and CI never get asked.
+
 **Then tell your agent to lead.** Start it in your project and say:
 
 > Read eleven/AGENTS.md and act as the CTO. Fill eleven/project.md from the codebase.
@@ -69,9 +72,33 @@ To pick up where you left off: *Read eleven/AGENTS.md and act as the CTO. Contin
 <details>
 <summary><b>Updating the kit</b></summary>
 
-Run `git pull` in `~/eleven`, then `~/eleven/install.sh --update ~/code/my-project`
-(Windows: `~\eleven\install.ps1 -Update C:\code\my-project`). This refreshes `AGENTS.md`, `agents/`,
-`templates/`, `docs/` and `ui/`. Your `project.md`, `work/` and `decisions/` are never touched.
+One command pulls the newest kit and refreshes your project:
+
+**macOS / Linux**
+
+```bash
+~/eleven/install.sh --update ~/code/my-project
+```
+
+**Windows (PowerShell)**
+
+```powershell
+~\eleven\install.ps1 --update C:\code\my-project
+```
+
+`-Update` works on Windows too, and the flag can go before or after the folder. The update runs
+`git pull --ff-only` in the kit first. If that fails (no network, or the kit has diverged), it tells you why
+and carries on with the kit you have. If you edited the kit itself, it stops and asks you to commit or stash first.
+
+It refreshes `AGENTS.md`, `agents/`, `templates/`, `docs/` and `ui/`. Your `project.md`, `work/` and
+`decisions/` are never touched.
+
+**Phone sync (optional).** Say yes to the question, or pass `--with-sync`, and the installer copies
+`eleven-sync` into `eleven/.sync-bin/`, inside the project, with an `eleven-sync` launcher
+(`eleven-sync.cmd` on Windows). It does not use npm, `sudo` or a global install, and it never writes
+inside your clone of the kit, so it no longer depends on where your clone is. It needs Node 20+; without
+Node you get a message and the kit still installs. The choice is saved in `eleven/.sync`, so every
+`--update` refreshes the copy.
 </details>
 
 ## How it works
