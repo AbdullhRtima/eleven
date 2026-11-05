@@ -1,87 +1,20 @@
 # Install eleven into a project as .\eleven, hidden from git via .git\info\exclude.
 #   .\install.ps1 [project_dir]            install; never overwrites existing files
-#   .\install.ps1 -Update [project_dir]    git pull the kit, then refresh AGENTS.md, agents\, templates\, docs\, ui\
-#   .\install.ps1 -WithSync                also install eleven-sync (phone app, paid beta; needs Node 20+), no question asked
-#   .\install.ps1 -NoSync                  never install eleven-sync and never ask
-# GNU-style flags work too (--update, --with-sync, --no-sync), before or after project_dir.
+#   .\install.ps1 -Update [project_dir]    also refresh AGENTS.md, agents\, templates\, docs\, ui\
 # The project's own files (project.md, work\, decisions\) are never overwritten.
-# eleven-sync is installed project-local into eleven\.sync-bin (no admin, no global install) and the
-# choice is saved in eleven\.sync, so -Update keeps it updated. Until it is on npm, it is linked
-# from this kit's packages\eleven-sync.
 # If scripts are blocked: powershell -ExecutionPolicy Bypass -File install.ps1 <project_dir>
-#
-# Flags are read from $args by hand: a param block would not accept "--update" (PowerShell takes it as a path).
-# Works on Windows PowerShell 5.1 and PowerShell 7.
+param(
+  [switch]$Update,
+  [Parameter(Position = 0)][string]$Project = "."
+)
 $ErrorActionPreference = "Stop"
 
-$Update = $false; $WithSync = $false; $NoSync = $false; $Project = $null
-foreach ($a in $args) {
-  $s = [string]$a
-  switch -Regex ($s) {
-    '^--?update$'    { $Update = $true; break }
-    '^--?with-?sync$' { $WithSync = $true; break }
-    '^--?no-?sync$'  { $NoSync = $true; break }
-    '^-'             { [Console]::Error.WriteLine("Unknown option: $s (try -Update, -WithSync, -NoSync)"); exit 1 }
-    default {
-      if ($null -ne $Project) { [Console]::Error.WriteLine("Only one project directory, got: $Project and $s"); exit 1 }
-      $Project = $s
-    }
-  }
-}
-if ($null -eq $Project) { $Project = "." }
-if ($WithSync -and $NoSync) { [Console]::Error.WriteLine("Use either -WithSync or -NoSync, not both."); exit 1 }
-
-function Invoke-Native {
-  # Run a program and capture its exit code and output in $script:nativeCode / $script:nativeOut.
-  # Windows PowerShell 5.1 turns anything a program writes to stderr into a terminating error while
-  # $ErrorActionPreference is "Stop", so relax it inside this function only (the setting is local here).
-  $ErrorActionPreference = "Continue"
-  $script:nativeCode = 0
-  $script:nativeOut = ""
-  try {
-    $program = $args[0]
-    $rest = @($args | Select-Object -Skip 1)   # a variable, so @rest can splat it
-    $script:nativeOut = ((& $program @rest 2>&1 | ForEach-Object { "$_" }) -join "`n")
-    $script:nativeCode = $LASTEXITCODE
-  } catch {
-    $script:nativeCode = 127   # program not found
-    $script:nativeOut = "$_"
-  }
-}
-
-if (-not (Test-Path -LiteralPath $Project -PathType Container)) {
-  [Console]::Error.WriteLine("Project folder not found: $Project"); exit 1
-}
 $kit = $PSScriptRoot
-$project = (Resolve-Path -LiteralPath $Project).Path
+$project = (Resolve-Path $Project).Path
 $dest = Join-Path $project "eleven"
 
-if ((Resolve-Path -LiteralPath $kit).Path -eq $dest) {
-  [Console]::Error.WriteLine("This is the kit itself. Run it against a project: .\install.ps1 C:\path\to\project")
-  exit 1
-}
-
-if ($Update) {
-  if (Test-Path -LiteralPath (Join-Path $kit ".git")) {
-    # The kit is a git clone: fetch the newest version first. Local edits in the kit are never overwritten.
-    Invoke-Native git -C $kit status --porcelain --untracked-files=no
-    if ($script:nativeOut.Trim()) {
-      [Console]::Error.WriteLine("The kit at $kit has local changes, so it cannot be updated safely.")
-      [Console]::Error.WriteLine("Commit or stash them (git -C `"$kit`" stash), then run -Update again.")
-      exit 1
-    }
-    Write-Host "Updating the kit: git pull --ff-only in $kit"
-    Invoke-Native git -C $kit pull --ff-only
-    if ($script:nativeCode -eq 0) {
-      Write-Host $script:nativeOut
-    } else {
-      [Console]::Error.WriteLine("Could not update the kit (no network, no upstream branch, or it diverged):")
-      [Console]::Error.WriteLine($script:nativeOut)
-      [Console]::Error.WriteLine("Continuing with the kit as it is on disk.")
-    }
-  } else {
-    Write-Host "The kit is not a git clone; skipping git pull and using it as it is."
-  }
+if ((Resolve-Path $kit).Path -eq $dest) {
+  Write-Error "This is the kit itself. Run it against a project: .\install.ps1 C:\path\to\project"
 }
 
 New-Item -ItemType Directory -Force (Join-Path $dest "work"), (Join-Path $dest "decisions") | Out-Null
@@ -116,10 +49,9 @@ Remove-Item (Join-Path $dest "ui\test") -Recurse -Force -ErrorAction SilentlyCon
 $projectMd = Join-Path $dest "project.md"
 if (-not (Test-Path $projectMd)) { Copy-Item (Join-Path $kit "templates\project.md") $projectMd }
 
-Invoke-Native git -C $project rev-parse --git-dir
-if ($script:nativeCode -eq 0) {
-  Invoke-Native git -C $project rev-parse --path-format=absolute --git-path info/exclude
-  $exclude = $script:nativeOut.Trim()
+git -C $project rev-parse --git-dir 2>$null | Out-Null
+if ($LASTEXITCODE -eq 0) {
+  $exclude = (git -C $project rev-parse --path-format=absolute --git-path info/exclude).Trim()
   New-Item -ItemType Directory -Force (Split-Path $exclude) | Out-Null
   if (-not (Test-Path $exclude) -or -not (Select-String -Path $exclude -Pattern '^/eleven/$' -Quiet)) {
     Add-Content -Path $exclude -Value "/eleven/"
@@ -128,52 +60,6 @@ if ($script:nativeCode -eq 0) {
 } else {
   Write-Host "Not a git repo; add /eleven/ to your ignore file yourself if you need to."
 }
-
-function Install-Sync {
-  # Install eleven-sync into eleven\.sync-bin. A problem here never fails the kit install.
-  Invoke-Native node --version
-  if ($script:nativeCode -ne 0) {
-    [Console]::Error.WriteLine("eleven-sync needs Node 20 or newer, and Node was not found.")
-    [Console]::Error.WriteLine("Get it from https://nodejs.org, then run the installer again with -WithSync.")
-    return
-  }
-  $nodeVersion = $script:nativeOut.Trim()
-  if ($nodeVersion -notmatch '^v(\d+)\.' -or [int]$Matches[1] -lt 20) {
-    [Console]::Error.WriteLine("eleven-sync needs Node 20 or newer; found $nodeVersion.")
-    [Console]::Error.WriteLine("Get a newer Node from https://nodejs.org, then run the installer again with -WithSync.")
-    return
-  }
-  $pkg = Join-Path $kit "packages\eleven-sync"
-  if (-not (Test-Path -LiteralPath $pkg -PathType Container)) {
-    [Console]::Error.WriteLine("eleven-sync is not in this kit ($pkg is missing).")
-    [Console]::Error.WriteLine("Run the installer from a full clone of the kit to use -WithSync.")
-    return
-  }
-  Write-Host "Installing eleven-sync into $dest\.sync-bin (project-local, no admin)"
-  # npm.cmd, not npm: on Windows "npm" can resolve to npm.ps1, which a default execution policy blocks.
-  $npm = if ($env:OS -eq "Windows_NT") { "npm.cmd" } else { "npm" }
-  Invoke-Native $npm install --prefix (Join-Path $dest ".sync-bin") --no-audit --no-fund --loglevel error $pkg
-  if ($script:nativeCode -eq 0) {
-    Set-Content -Path (Join-Path $dest ".sync") -Value "sync=1" -Encoding ASCII
-    Write-Host "eleven-sync installed: $dest\.sync-bin\node_modules\.bin\eleven-sync"
-    Write-Host "The phone app is in private beta: it works once your email is on the beta list."
-  } else {
-    [Console]::Error.WriteLine($script:nativeOut)
-    [Console]::Error.WriteLine("eleven-sync did not install (npm failed). The kit itself is installed; retry with -WithSync.")
-  }
-}
-
-# eleven-sync (optional): wanted if asked for, already chosen earlier (eleven\.sync), or answered "y".
-$wantSync = $false
-if ($NoSync) {
-  $wantSync = $false
-} elseif ($WithSync -or (Test-Path -LiteralPath (Join-Path $dest ".sync"))) {
-  $wantSync = $true
-} elseif ((-not $Update) -and [Environment]::UserInteractive -and -not [Console]::IsInputRedirected -and -not [Console]::IsOutputRedirected) {
-  $answer = Read-Host "Use eleven on your phone (paid, beta)? This installs eleven-sync and needs Node 20+. [y/N]"
-  if ($answer -match '^[Yy]') { $wantSync = $true }
-}
-if ($wantSync) { Install-Sync }
 
 Write-Host "Installed eleven in $dest"
 Write-Host ""
