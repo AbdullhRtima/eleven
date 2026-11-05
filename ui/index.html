@@ -511,6 +511,7 @@ function statusKind(s) {
   if (/^(done|passed?|shipped|merged|✓|✅)/.test(s)) return "done";
   if (/^blocked\b/.test(s)) return "blocked";
   if (/^fail/.test(s)) return "failed";
+  if (/^cancell?ed\b/.test(s)) return "cancelled";
   return "todo";
 }
 const isUserRole = (role) => /^(user|ceo|you)\b/i.test(strip(role));
@@ -559,7 +560,7 @@ function itemModel(id, files) {   // files: Map of ledger path -> { text }
         s = s.charAt(0).toUpperCase() + s.slice(1);
         Object.assign(it, { state: "waiting", chip: "Waiting on you", sentence: s, md: true });
       } else Object.assign(it, { state: "working", chip: `Working · ${strip(next.role) || "?"}`, sentence: next.task, md: true });
-    } else if (rows.every((r) => statusKind(r.status) === "done")) Object.assign(it, { state: "done", chip: "Done", sentence: "All tasks done." });
+    } else if (["done", "cancelled"].includes(statusKind(rows[rows.length - 1].status))) Object.assign(it, { state: "done", chip: "Done", sentence: "All tasks done." });
     else Object.assign(it, { state: "idle", chip: "Waiting for the CTO", sentence: "No task is marked NEXT." });
   }
   if (round && round.n >= round.max && it.state !== "done") it.warn.unshift(`Round limit reached (${round.n} of ${round.max}). The team stops here.`);

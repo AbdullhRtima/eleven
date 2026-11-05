@@ -60,6 +60,15 @@ document.getElementById("b").onclick = () => { document.getElementById("b").text
   "work/009-two-next/brief.md": brief("Two NEXT rows"),
   "work/009-two-next/tasks.md": f("Round: 1 / 10\n\n" + T([["1", "Explore", "architect", "", "NEXT"], ["2", "User: answer", "user", "", "next"]])),
 
+  // 013-015: closed-item status (010 work item). History rows (failed, cancelled) that later rows replaced don't keep an item open.
+  "work/013-closed-history/brief.md": brief("Closed with history"),
+  "work/013-closed-history/tasks.md": f("Round: 5 / 10\n\n" + T([["1", "Build", "frontend", "", "done"], ["2", "Verify", "qa", "", "failed: 7/8 pass; fix → task 3"],
+    ["3", "Fix", "frontend", "", "done"], ["4", "Old plan", "designer", "", "cancelled: replaced by 3"], ["5", "Accept", "user", "", "done (accepted)"]])),
+  "work/014-open-failed/brief.md": brief("Trailing failed row"),
+  "work/014-open-failed/tasks.md": f("Round: 2 / 10\n\n" + T([["1", "Build", "frontend", "", "done"], ["2", "Verify", "qa", "", "failed: 3/8 pass"]])),
+  "work/015-cancelled-last/brief.md": brief("Cancelled last"),
+  "work/015-cancelled-last/tasks.md": f("Round: 2 / 10\n\n" + T([["1", "Build", "frontend", "", "done"], ["2", "Extra", "qa", "", "cancelled: not needed"]])),
+
   // 010: Arabic text, a file name with spaces, a non-ASCII file name (B6)
   "work/010-arabic/brief.md": f("# Brief: ملاحظات الاجتماع\n\nStatus: approved\n"),
   "work/010-arabic/tasks.md": f("Round: 1 / 10\n\n" + T([["1", "Write `my notes.md` and ملف.md", "writer", "", "NEXT"]])),

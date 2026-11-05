@@ -135,10 +135,13 @@ try {
     "010-arabic": ["working", "Working · writer", "Write `my notes.md` and ملف.md"],
     "011-attack": ["waiting", "Waiting on you", `<img src=x onerror="window.__x('S')"> and [js](javascript:window.__x('SL'))`],
     "012-svg": ["working", "Working · frontend", ledger["work/012-svg/tasks.md"].text.split("\n")[2].split(" | ")[1]],
+    "013-closed-history": ["done", "Done", "All tasks done."],
+    "014-open-failed": ["idle", "Waiting for the CTO", "No task is marked NEXT."],
+    "015-cancelled-last": ["done", "Done", "All tasks done."],
   };
   for (const [id, w] of Object.entries(want)) check("C1", `status of ${id}: ${w[0]} · ${w[1]}`, eq(st[id], w), st[id]);
   check("C1", "two NEXT rows warn", (o.items.find((i) => i.id === "009-two-next")?.warn || []).some((w) => /2 tasks are marked NEXT/.test(w)));
-  check("C1", "only the 12 items are listed", eq(o.items.map((i) => i.id), Object.keys(want)), o.items.map((i) => i.id));
+  check("C1", "only the 15 items are listed", eq(o.items.map((i) => i.id), Object.keys(want)), o.items.map((i) => i.id));
 
   const files = await b.ev(`[...S.files.keys()]`);
   const hidden = ["AGENTS.md", "README.md", "agents/cto.md", "templates/brief.md", "docs/guide.md", "ui/index.html", ".hidden/x.md", "work/001-done/.secret.md"];
@@ -181,8 +184,8 @@ try {
     const c=document.querySelector('.card[data-item="012-svg"]');return {cards:document.querySelectorAll('.card').length,pill:document.querySelector('#pill .txt').textContent,
     lost:!!document.querySelector('.lostbar'),svgs:document.querySelectorAll('#cards :is(.sent,.q-body) :is(svg,math,rect)').length,
     headOnTop:top?.id==='homeH',sent:c?.querySelector('.sent').textContent.trim()}})()`);
-  check("M4", "an <svg><a> + overlay <rect> in a NEXT task: Home keeps all 12 cards, 'Live', no 'Lost access', nothing painted over it",
-    m4h.cards === 12 && m4h.pill === "Live" && !m4h.lost && m4h.svgs === 0 && m4h.headOnTop && /^Fix\s+x?\s*the\s+thing$/.test(m4h.sent), m4h);
+  check("M4", "an <svg><a> + overlay <rect> in a NEXT task: Home keeps all 15 cards, 'Live', no 'Lost access', nothing painted over it",
+    m4h.cards === 15 && m4h.pill === "Live" && !m4h.lost && m4h.svgs === 0 && m4h.headOnTop && /^Fix\s+x?\s*the\s+thing$/.test(m4h.sent), m4h);
 
   // ------------------------------------------------------------ M1: page CSP (option B: mockups keep their JS)
   const metaM = ui.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/);
@@ -221,7 +224,7 @@ try {
       if (!ok) bad.push({ want: [state, label, T[dotV], T[inkV]], got: c });
     }
     check("N1", `${theme}: every card and tree dot shows its state by class, label and colour (waiting amber, working vermilion, done green, idle grey)`,
-      looks.cards.length === 12 && bad.length === 0 && new Set(["--warn", "--accent", "--ok", "--muted"].map((v) => looks.T[v])).size === 4, bad.length ? bad : looks.cards.length);
+      looks.cards.length === 15 && bad.length === 0 && new Set(["--warn", "--accent", "--ok", "--muted"].map((v) => looks.T[v])).size === 4, bad.length ? bad : looks.cards.length);
   }
 
   // ------------------------------------------------------------ B3: live update keeps the questions box scroll
@@ -377,7 +380,7 @@ try {
     const wrongKind = Object.entries(fixed).filter(([key, k]) => !gl.tasks.some((t) => t.key === key && t.cls.endsWith(" k-" + k)));
     const dots = ["waiting", "working", "todo"].map((k) => gl.tasks.find((t) => t.cls.endsWith(" k-" + k))?.dot);
     check("N1", `${theme}: every task and item node in the graph shows its status by class, label and colour; waiting, working and to-do differ`,
-      gl.tasks.length >= 10 && gl.items.length === 12 && bad.length === 0 && wrongKind.length === 0 && new Set(dots).size === 3 && !dots.includes(undefined), { bad, wrongKind, dots, n: [gl.tasks.length, gl.items.length] });
+      gl.tasks.length >= 10 && gl.items.length === 15 && bad.length === 0 && wrongKind.length === 0 && new Set(dots).size === 3 && !dots.includes(undefined), { bad, wrongKind, dots, n: [gl.tasks.length, gl.items.length] });
   }
 
   // ------------------------------------------------------------ S1 (003 B1): status is never colour only. Every status draws its own glyph,
@@ -494,7 +497,7 @@ try {
   const m4e = await b.ev(`(()=>{const c=document.querySelector('.card[data-item="002-working"]');return {chip:c?.querySelector('.chip').textContent.trim(),warn:c?.querySelector('.warnline')?.textContent,
     sent:c?.querySelector('.sent').textContent,pill:document.querySelector('#pill .txt').textContent,lost:!!document.querySelector('.lostbar'),cards:document.querySelectorAll('.card').length}})()`);
   check("M4", "a render error in one card: that card shows its status + a plain-text warning; the pill stays 'Live', no 'Lost access'",
-    boom >= 0 && m4e.chip === "Working · frontend" && /Couldn't show this item's Markdown/.test(m4e.warn || "") && m4e.sent.includes("BOOM-MARKER") && m4e.pill === "Live" && !m4e.lost && m4e.cards === 12, m4e);
+    boom >= 0 && m4e.chip === "Working · frontend" && /Couldn't show this item's Markdown/.test(m4e.warn || "") && m4e.sent.includes("BOOM-MARKER") && m4e.pill === "Live" && !m4e.lost && m4e.cards === 15, m4e);
 
   // ------------------------------------------------------------ L3: heading ids can't clash with the UI's ids; anchors still work
   const IDS = "theme=light&file=" + encodeURIComponent("work/011-attack/ids.md");
@@ -599,7 +602,7 @@ try {
   // ------------------------------------------------------------ L6: a malformed #file= hash
   const l6 = await tryGo("theme=light&file=%E0%A4%A&at=%E0");
   const l6v = l6 >= 0 ? await b.ev(`[S.view.kind,document.querySelectorAll('.card').length,document.getElementById('homeH').textContent]`) : null;
-  check("L6", "#file=%E0%A4%A (malformed) is ignored: Home shows, no exception", l6 >= 0 && eq(l6v, ["home", 12, "5 items wait on you"]), { l6, l6v });
+  check("L6", "#file=%E0%A4%A (malformed) is ignored: Home shows, no exception", l6 >= 0 && eq(l6v, ["home", 15, "5 items wait on you"]), { l6, l6v });
 
   // ------------------------------------------------------------ across every page
   await collect();

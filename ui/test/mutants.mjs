@@ -19,6 +19,8 @@ export const MUTANTS = [
     find: `"use strict";\n`, replace: `"use strict";\ndocument.addEventListener("click", () => setTimeout(() => { throw new Error("QA8-LATE-EXCEPTION"); }));\n` },
   { id: "m6-status-glyphs-gone", what: "status glyphs are removed, so status is shown by colour alone again (003 QA B1)",
     find: `const GLYPH = {`, replace: `const GLYPH = {}, GLYPH_GONE = {` },
+  { id: "m7-history-keeps-item-open", what: "an item counts as done only when every row is done, so old failed or cancelled rows keep it open (010)",
+    find: `["done", "cancelled"].includes(statusKind(rows[rows.length - 1].status))`, replace: `rows.every((r) => statusKind(r.status) === "done")` },
 ];
 
 // Throws if the code a mutant targets is gone, so a refactor can't silently turn a mutant into a no-op.
