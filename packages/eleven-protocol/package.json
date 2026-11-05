@@ -1,0 +1,11 @@
+{
+  "name": "@eleven/protocol",
+  "version": "0.0.1",
+  "description": "eleven sync protocol v1: envelope, encryption and key derivation (WebCrypto only)",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "files": ["src"],
+  "engines": { "node": ">=20" }
+}
