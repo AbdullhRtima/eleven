@@ -1,0 +1,191 @@
+name: Installers
+
+on:
+  push:
+    paths: ["install.sh", "install.ps1", ".github/workflows/installers.yml"]
+  pull_request:
+    paths: ["install.sh", "install.ps1", ".github/workflows/installers.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    name: ${{ matrix.os }} / ${{ matrix.installer }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, installer: sh }
+          - { os: ubuntu-latest, installer: pwsh }
+          - { os: macos-latest, installer: sh }
+          - { os: macos-latest, installer: pwsh }
+          - { os: windows-latest, installer: sh }
+          - { os: windows-latest, installer: pwsh }
+          - { os: windows-latest, installer: powershell } # Windows PowerShell 5.1
+    defaults:
+      run:
+        shell: bash
+    env:
+      INSTALLER: ${{ matrix.installer }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Test helpers
+        run: |
+          cat > "$RUNNER_TEMP/h.sh" <<'HELPERS'
+          set -euo pipefail
+          # Plain POSIX spelling of the paths (Git Bash on Windows hands us D:\a\... otherwise).
+          KIT="$(cd "$GITHUB_WORKSPACE" && pwd)"
+          RUNNER_TEMP="$(cd "$RUNNER_TEMP" && pwd)"
+          # Paths for a native Windows program (PowerShell): C:/... instead of /c/...
+          native() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi; }
+          # run_from <kit_dir> <installer args...>: flags are passed as they are, paths are converted for PowerShell.
+          run_from() {
+            local k="$1"; shift
+            case "$INSTALLER" in
+              sh) bash "$k/install.sh" "$@" ;;
+              *)
+                local args=() a
+                for a in "$@"; do
+                  if [[ "$a" == -* ]]; then args+=("$a"); else args+=("$(native "$a")"); fi
+                done
+                if [[ "$INSTALLER" == pwsh ]]; then
+                  pwsh -NoProfile -File "$(native "$k")/install.ps1" "${args[@]}"
+                else
+                  powershell -NoProfile -ExecutionPolicy Bypass -File "$(native "$k")/install.ps1" "${args[@]}"
+                fi ;;
+            esac
+          }
+          run() { run_from "$KIT" "$@"; }
+          # try <args...>: run the installer, keep the output in $out and the exit code in $rc, never abort.
+          try() { set +e; out="$(run "$@" 2>&1)"; rc=$?; set -e; echo "$out"; }
+          fail() { echo "FAIL: $*" >&2; exit 1; }
+          new_project() { local d="$RUNNER_TEMP/$1"; rm -rf "$d"; mkdir -p "$d"; git -C "$d" init -q; echo "$d"; }
+          HELPERS
+
+      - name: Fresh install into a git repo
+        run: |
+          source "$RUNNER_TEMP/h.sh"
+          p="$(new_project fresh)"
+          try "$p"
+          [ "$rc" -eq 0 ] || fail "exit $rc"
+          for f in AGENTS.md project.md agents templates docs ui/index.html work decisions; do
+            [ -e "$p/eleven/$f" ] || fail "missing eleven/$f"
+          done
+          [ ! -e "$p/eleven/ui/test" ] || fail "ui/test was not removed"
+          [ ! -e "$p/eleven/.sync" ] || fail "eleven-sync was installed without being asked"
+          grep -qxF "/eleven/" "$p/.git/info/exclude" || fail "eleven/ is not git-excluded"
+          [ -z "$(git -C "$p" status --porcelain)" ] || fail "eleven/ shows up in git status"
+
+      - name: Re-install leaves project files alone
+        run: |
+          source "$RUNNER_TEMP/h.sh"
+          p="$(new_project reinstall)"
+          try "$p"; [ "$rc" -eq 0 ] || fail "first install exit $rc"
+          echo "MY PROJECT" > "$p/eleven/project.md"
+          mkdir -p "$p/eleven/work/001-x"; echo "MY WORK" > "$p/eleven/work/001-x/brief.md"
+          echo "MY DECISION" > "$p/eleven/decisions/0001-x.md"
+          echo "LOCAL EDIT" > "$p/eleven/AGENTS.md"
+          try "$p"; [ "$rc" -eq 0 ] || fail "re-install exit $rc"
+          [ "$(cat "$p/eleven/project.md")" = "MY PROJECT" ] || fail "project.md was touched"
+          [ "$(cat "$p/eleven/work/001-x/brief.md")" = "MY WORK" ] || fail "work/ was touched"
+          [ "$(cat "$p/eleven/decisions/0001-x.md")" = "MY DECISION" ] || fail "decisions/ was touched"
+          [ "$(cat "$p/eleven/AGENTS.md")" = "LOCAL EDIT" ] || fail "a plain re-install overwrote AGENTS.md"
+          [ "$(grep -c '^/eleven/$' "$p/.git/info/exclude")" -eq 1 ] || fail "exclude line was added twice"
+
+      - name: Update refreshes the kit, never project files (flag before and after the dir)
+        run: |
+          source "$RUNNER_TEMP/h.sh"
+          if [ "$INSTALLER" = sh ]; then flags=(--update); else flags=(--update -Update); fi
+          for flag in "${flags[@]}"; do
+            for order in before after; do
+              p="$(new_project "update-$order-${flag#-}")"
+              try "$p"; [ "$rc" -eq 0 ] || fail "install exit $rc"
+              echo "MY PROJECT" > "$p/eleven/project.md"
+              mkdir -p "$p/eleven/work/001-x"; echo "MY WORK" > "$p/eleven/work/001-x/brief.md"
+              echo "LOCAL EDIT" > "$p/eleven/AGENTS.md"
+              if [ "$order" = before ]; then try "$flag" "$p"; else try "$p" "$flag"; fi
+              [ "$rc" -eq 0 ] || fail "$flag ($order dir) exit $rc"
+              grep -q "Updating the kit" <<<"$out" || fail "$flag did not try to update the kit"
+              grep -qE "Could not update the kit|Already up to date|Updating [0-9a-f]+" <<<"$out" || fail "$flag printed no pull result"
+              [ "$(cat "$p/eleven/project.md")" = "MY PROJECT" ] || fail "$flag touched project.md"
+              [ "$(cat "$p/eleven/work/001-x/brief.md")" = "MY WORK" ] || fail "$flag touched work/"
+              grep -q "operating manual" "$p/eleven/AGENTS.md" || fail "$flag did not refresh AGENTS.md"
+              [ ! -e "$p/eleven/ui/test" ] || fail "$flag left ui/test"
+            done
+          done
+
+      - name: Not a git repo
+        run: |
+          source "$RUNNER_TEMP/h.sh"
+          p="$RUNNER_TEMP/plain"; rm -rf "$p"; mkdir -p "$p"
+          try "$p"
+          [ "$rc" -eq 0 ] || fail "exit $rc"
+          grep -q "Not a git repo" <<<"$out" || fail "no not-a-git-repo message"
+          [ -f "$p/eleven/AGENTS.md" ] || fail "kit was not installed"
+
+      - name: The kit itself is refused
+        run: |
+          source "$RUNNER_TEMP/h.sh"
+          p="$RUNNER_TEMP/selfhost"; rm -rf "$p"; mkdir -p "$p"
+          cp -R "$KIT" "$p/eleven"      # the kit sitting where the install would go
+          set +e; out="$(run_from "$p/eleven" "$p" 2>&1)"; rc=$?; set -e; echo "$out"
+          [ "$rc" -ne 0 ] || fail "installing the kit into itself did not fail"
+          grep -q "This is the kit itself" <<<"$out" || fail "no refusal message"
+
+      - name: --no-sync never asks (even with an answer waiting on stdin)
+        run: |
+          source "$RUNNER_TEMP/h.sh"
+          p="$(new_project nosync)"
+          set +e; out="$(printf 'y\ny\n' | run --no-sync "$p" 2>&1)"; rc=$?; set -e; echo "$out"
+          [ "$rc" -eq 0 ] || fail "exit $rc"
+          if grep -q "Use eleven on your phone" <<<"$out"; then fail "--no-sync asked the question"; fi
+          [ ! -e "$p/eleven/.sync" ] || fail "--no-sync created .sync"
+          # Non-interactive runs never ask either.
+          p="$(new_project noninteractive)"
+          set +e; out="$(printf 'y\n' | run "$p" 2>&1)"; rc=$?; set -e; echo "$out"
+          [ "$rc" -eq 0 ] || fail "exit $rc"
+          if grep -q "Use eleven on your phone" <<<"$out"; then fail "a non-interactive run asked the question"; fi
+          [ ! -e "$p/eleven/.sync" ] || fail "a non-interactive run created .sync"
+
+      - name: --with-sync installs eleven-sync, and update keeps it
+        run: |
+          source "$RUNNER_TEMP/h.sh"
+          node --version
+          p="$(new_project withsync)"
+          try --with-sync "$p"; [ "$rc" -eq 0 ] || fail "exit $rc"
+          [ "$(cat "$p/eleven/.sync")" = "sync=1" ] || fail "eleven/.sync is not sync=1"
+          bin="$p/eleven/.sync-bin"
+          if [ "$INSTALLER" = sh ]; then launcher="$bin/eleven-sync"; else launcher="$bin/eleven-sync.cmd"; fi
+          [ -f "$launcher" ] || fail "launcher missing: $launcher"
+          for f in eleven-sync/bin/eleven-sync.js ledger-core/index.js eleven-protocol/src/index.js; do
+            [ -f "$bin/packages/$f" ] || fail "missing packages/$f"
+          done
+          [ ! -e "$bin/packages/eleven-sync/test" ] || fail "tests were copied"
+          [ ! -e "$bin/node_modules" ] || fail "npm was used"
+          [ -z "$(git -C "$p" status --porcelain)" ] || fail ".sync files show up in git status"
+          run_launcher() {
+            if [ "$INSTALLER" = sh ]; then "$bin/eleven-sync" "$@"; else MSYS_NO_PATHCONV=1 cmd.exe //c "$(cygpath -w "$bin/eleven-sync.cmd")" "$@"; fi
+          }
+          ver="$(run_launcher --version)" || fail "the launcher failed on --version"
+          echo "launcher: $ver"
+          grep -qE '^[0-9]+\.[0-9]+\.[0-9]+' <<<"$ver" || fail "unexpected --version output: $ver"
+          try "$p" --update; [ "$rc" -eq 0 ] || fail "update exit $rc"
+          grep -q "Installing eleven-sync" <<<"$out" || fail "--update did not refresh eleven-sync"
+          [ -e "$p/eleven/.sync" ] || fail "--update removed .sync"
+          [ -f "$launcher" ] || fail "--update lost the launcher"
+          ver="$(run_launcher --version)" || fail "the launcher failed after --update"
+
+      - name: The kit is untouched by --with-sync
+        run: |
+          source "$RUNNER_TEMP/h.sh"
+          p="$(new_project kitclean)"
+          try --with-sync "$p"; [ "$rc" -eq 0 ] || fail "exit $rc"
+          st="$(git -C "$KIT" status --porcelain --untracked-files=no)"
+          [ -z "$st" ] || { echo "$st" | head -n 10; fail "the install changed files in the kit"; }
+          try "$p" --update; [ "$rc" -eq 0 ] || fail "update after --with-sync exit $rc (the kit must stay clean)"
