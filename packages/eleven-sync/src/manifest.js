@@ -3,21 +3,16 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { scan } from "./scan.js";
+import { jcs } from "../../eleven-protocol/src/jcs.js";
+import { ensurePrivateDir, readPrivate, writePrivateAtomic } from "./fsafe.js";
 
 export const FULL_EVERY = 100;   // a full manifest after this many deltas (7.3)
 export const b64u = (buf) => Buffer.from(buf).toString("base64url");
 export const H = (x) => b64u(crypto.createHash("sha256").update(x).digest());
 
-// RFC 8785 for the values we hash: objects, arrays, strings, integers, booleans, null.
-export function jcs(v) {
-  if (v === null || typeof v !== "object") {
-    if (typeof v === "number" && !Number.isFinite(v)) throw new Error("jcs: non-finite number");
-    return JSON.stringify(v);
-  }
-  if (Array.isArray(v)) return "[" + v.map(jcs).join(",") + "]";
-  const keys = Object.keys(v).filter((k) => v[k] !== undefined).sort();
-  return "{" + keys.map((k) => JSON.stringify(k) + ":" + jcs(v[k])).join(",") + "}";
-}
+// RFC 8785: the protocol package's JCS is the only one (it refuses lone surrogates, undefined, non-plain objects and sparse arrays).
+export { jcs };
+
 // hash = H(prevHash || JCS(body without hash)). prevHash null counts as the empty string.
 export function chainHash(prevHash, body) {
   const { hash, ...rest } = body;
@@ -63,17 +58,16 @@ export function verifyChain(manifest, deltas = []) {
 // The caller passes stateDir (never ~/.config here). Kfid belongs in the OS keychain later (task 6).
 export function loadState(stateDir) {
   const file = path.join(stateDir, "state.json");
+  ensurePrivateDir(stateDir);
   let s = null;
-  try { s = JSON.parse(fs.readFileSync(file, "utf8")); } catch (e) { if (e.code !== "ENOENT") throw new Error(`state file unreadable: ${file}`); }
+  try {
+    const raw = readPrivate(file);   // refuses a symlink; chmods an existing file to 0600
+    if (raw !== null) s = JSON.parse(raw.toString("utf8"));
+  } catch { throw new Error(`state file unreadable: ${file}`); }
   if (!s || s.v !== 1 || typeof s.kfid !== "string") s = { v: 1, kfid: b64u(crypto.randomBytes(32)), epoch: 0, fids: {}, current: null };
   return { file, state: s };
 }
-function saveState(file, state) {
-  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
-  const tmp = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(state), { mode: 0o600 });
-  fs.renameSync(tmp, file);
-}
+function saveState(file, state) { writePrivateAtomic(file, JSON.stringify(state)); }
 
 export class ManifestTracker {
   // stateDir null = in-memory only (nothing written)

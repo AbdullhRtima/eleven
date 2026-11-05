@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import { sealWithFixedNonce } from "./vector-seal.mjs";
 import {
   b64uEncode, b64uDecode, jcs, pad, unpad, paddedSize, seal, open, buildAad, ProtocolError,
   generateKeyAgreementKeyPair, generateSigningKeyPair, exportPublicKey, importPublicKey, fingerprint,
@@ -231,22 +232,22 @@ test("keys: SPKI export/import, fingerprint, Kfid", async () => {
 });
 test("keys: both sides derive the same message keys; direction, vault, device and secret change them", async () => {
   const m = await generateKeyAgreementKeyPair(), p = await generateKeyAgreementKeyPair();
-  const secret = Uint8Array.of(1, 2, 3, 4);
-  const rm = await deriveRoot({ privateKey: m.privateKey, peerPublicKey: p.publicKey, pairingId: "pr_x", secret });
-  const rp = await deriveRoot({ privateKey: p.privateKey, peerPublicKey: m.publicKey, pairingId: "pr_x", secret });
+  const secret = Uint8Array.from({ length: 32 }, (_, i) => i + 1);
+  const rm = await deriveRoot({ privateKey: m.privateKey, peerPublicKey: p.publicKey, pairingId: "pr_xxxxxxxx", secret });
+  const rp = await deriveRoot({ privateKey: p.privateKey, peerPublicKey: m.publicKey, pairingId: "pr_xxxxxxxx", secret });
   const km = await deriveMessageKeys(rm, { vault: ids.vault, deviceId: ids.phone });
   const kp = await deriveMessageKeys(rp, { vault: ids.vault, deviceId: ids.phone });
   assert.equal(km.m2p.extractable, false);
   const env = await seal(fieldsM2P(), innerManifest(), km.m2p);
   assert.equal((await open(env, kp.m2p)).t, "manifest");
   await rejects(open(env, kp.p2m), "decrypt_failed"); // each direction has its own key
-  const other = async (opts, dev = ids.phone, vault = ids.vault) => (await deriveMessageKeys(await deriveRoot({ privateKey: p.privateKey, peerPublicKey: m.publicKey, pairingId: "pr_x", secret, ...opts }), { vault, deviceId: dev })).m2p;
-  await rejects(open(env, await other({ secret: Uint8Array.of(1, 2, 3, 5) })), "decrypt_failed");
-  await rejects(open(env, await other({ pairingId: "pr_y" })), "decrypt_failed");
+  const other = async (opts, dev = ids.phone, vault = ids.vault) => (await deriveMessageKeys(await deriveRoot({ privateKey: p.privateKey, peerPublicKey: m.publicKey, pairingId: "pr_xxxxxxxx", secret, ...opts }), { vault, deviceId: dev })).m2p;
+  await rejects(open(env, await other({ secret: Uint8Array.from({ length: 32 }, (_, i) => i + 2) })), "decrypt_failed");
+  await rejects(open(env, await other({ pairingId: "pr_yyyyyyyy" })), "decrypt_failed");
   await rejects(open(env, await other({}, "dev_other")), "decrypt_failed");
   await rejects(open(env, await other({}, ids.phone, "vlt_other")), "decrypt_failed");
   await assert.rejects(deriveMessageKeys(rm, { vault: ids.vault, deviceId: ids.phone, epoch: 1 }));
-  await assert.rejects(deriveRoot({ privateKey: m.privateKey, peerPublicKey: p.publicKey, pairingId: "pr_x", secret: new Uint8Array(0) }));
+  await assert.rejects(deriveRoot({ privateKey: m.privateKey, peerPublicKey: p.publicKey, pairingId: "pr_xxxxxxxx", secret: new Uint8Array(0) }));
 });
 
 // ---- checked-in vectors (the PWA must reproduce these)
@@ -267,10 +268,11 @@ test("vectors: independent derivation matches the checked-in values", async () =
   const hex = (u) => Buffer.from(u).toString("hex");
   assert.equal(hex(await hkdf(root, new Uint8Array(0), `eleven/v1/m2p|${V.vault}|${V.phone}|0`)), V.kM2pHex);
   assert.equal(hex(await hkdf(root, new Uint8Array(0), `eleven/v1/p2m|${V.vault}|${V.phone}|0`)), V.kP2mHex);
-  // 3. the library gets the same keys
+  // 3. deriveRoot itself, on the vector inputs (32-byte secret), reproduces the vector keys
   const lib = await deriveMessageKeys(await deriveRoot({ privateKey: mkx, peerPublicKey: pkxPub, pairingId: V.pairingId, secret }), { vault: V.vault, deviceId: V.phone, extractable: true });
   assert.equal(hex(new Uint8Array(await subtle.exportKey("raw", lib.m2p))), V.kM2pHex);
   assert.equal(hex(new Uint8Array(await subtle.exportKey("raw", lib.p2m))), V.kP2mHex);
+  assert.equal(secret.length, 32);
   // 4. fingerprint
   assert.equal((await fingerprint(b64uDecode(V.mkx.spkiB64u), b64uDecode(V.msigSpkiB64u))).b64u, V.fingerprintB64u);
 });
@@ -284,4 +286,42 @@ test("vectors: every checked-in envelope opens to its inner message, and the AAD
   }
   // padding visible in the vectors: 1 KiB bucket + 16-byte tag
   assert.equal(b64uDecode(V.messages[0].envelope.ct).length, 1024 + 16);
+});
+
+// ---- security 04b (L5, L6, jcs)
+test("L5: the test-only fixed-nonce seal reproduces every vector; src/ has no nonce-taking seal", async () => {
+  const keys = { m2p: await aesKey(hexToBytes(V.kM2pHex)), p2m: await aesKey(hexToBytes(V.kP2mHex)) };
+  for (const m of V.messages) {
+    const e = m.envelope;
+    const fields = { type: e.type, vault: e.vault, from: e.from, to: e.to, id: e.id, ts: e.ts, ...(e.fid !== undefined ? { fid: e.fid } : {}) };
+    assert.deepEqual(await sealWithFixedNonce(fields, m.inner, keys[m.key], b64uDecode(e.n)), e, m.name);
+  }
+  const srcDir = new URL("../src/", import.meta.url);
+  for (const f of readdirSync(srcDir)) {
+    const text = readFileSync(new URL(f, srcDir), "utf8");
+    assert.ok(!/sealWithNonce|ForVectors|function[^(]*\([^)]*nonce|nonce\s*\)\s*=>/i.test(text.replace(/\/\/.*$/gm, "")), `${f} must not take a nonce from its caller`);
+  }
+});
+test("L6: deriveRoot needs a 32-byte secret and a pairingId of [A-Za-z0-9_-]{8,64}", async () => {
+  const m = await generateKeyAgreementKeyPair(), p = await generateKeyAgreementKeyPair();
+  const ok = { privateKey: m.privateKey, peerPublicKey: p.publicKey, pairingId: "pr_dGVzdFBhaXJpbmcwMDAwMQ", secret: new Uint8Array(32) };
+  await deriveRoot(ok);
+  for (const secret of [new Uint8Array(1), new Uint8Array(16), new Uint8Array(31), new Uint8Array(33), new Uint8Array(0), "x".repeat(32), Array(32).fill(0)]) await assert.rejects(deriveRoot({ ...ok, secret }), TypeError);
+  for (const pairingId of ["a|b_cdefgh", "short", "x".repeat(65), "pr_ü_ü_ü_ü_", "pr x xxxxx", "", 5, undefined]) await assert.rejects(deriveRoot({ ...ok, pairingId }), TypeError);
+  await deriveRoot({ ...ok, pairingId: "x".repeat(64) });
+  await deriveRoot({ ...ok, pairingId: "x".repeat(8) });
+});
+test("L6: open() with expected { vault, from, to } rejects mismatches with the same coarse error as a wrong key", async () => {
+  const key = await newKey();
+  const env = await seal(fieldsM2P(), innerManifest(), key);
+  assert.equal((await open(env, key, { vault: ids.vault, from: ids.machine, to: ids.phone })).t, "manifest");
+  assert.equal((await open(env, key, {})).t, "manifest");
+  const wrongKey = await rejects(open(env, await newKey()), "decrypt_failed").then(() => "decrypt_failed");
+  for (const expect of [{ vault: "vlt_other" }, { from: "dev_other" }, { to: "dev_other" }, { vault: ids.vault, from: ids.machine, to: "dev_x" }]) {
+    await assert.rejects(open(env, key, expect), (e) => e instanceof ProtocolError && e.code === wrongKey && e.message === wrongKey);
+  }
+});
+test("jcs: sparse arrays are refused", () => {
+  assert.throws(() => jcs([1, , 3]), /sparse/);
+  assert.equal(jcs([1, null, 3]), "[1,null,3]");
 });

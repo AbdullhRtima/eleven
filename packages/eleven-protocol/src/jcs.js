@@ -13,7 +13,10 @@ export function jcs(v) {
       if (!isWellFormed(v)) throw new Error("jcs: lone surrogate");
       return JSON.stringify(v);
     case "object": {
-      if (Array.isArray(v)) return "[" + v.map(jcs).join(",") + "]";
+      if (Array.isArray(v)) {
+        for (let i = 0; i < v.length; i++) if (!(i in v)) throw new Error("jcs: sparse array");
+        return "[" + v.map(jcs).join(",") + "]";
+      }
       const proto = Object.getPrototypeOf(v);
       if (proto !== Object.prototype && proto !== null) throw new Error("jcs: not a plain object");
       const keys = Object.keys(v).sort();
