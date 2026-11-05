@@ -14,10 +14,11 @@ export async function launch({ width = 1280, height = 900 } = {}) {
   const proc = spawn(CHROME, [...sandbox, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run", "--no-default-browser-check",
     "--allow-file-access-from-files", "--remote-debugging-port=0", `--user-data-dir=${ud}`, `--window-size=${width},${height}`, "about:blank"], { stdio: "ignore" });
   let port;
-  for (let i = 0; i < 100 && !port; i++) {
+  // A cold Chrome on a busy CI runner can take well over 10 s to write DevToolsActivePort; wait up to 60 s.
+  for (let i = 0; i < 600 && !port && proc.exitCode === null; i++) {
     try { port = fs.readFileSync(path.join(ud, "DevToolsActivePort"), "utf8").split("\n")[0]; } catch { await sleep(100); }
   }
-  if (!port) { proc.kill(); throw new Error("Chrome did not start (no DevToolsActivePort)"); }
+  if (!port) { proc.kill(); throw new Error(`Chrome did not start (no DevToolsActivePort${proc.exitCode !== null ? `; it exited with code ${proc.exitCode}` : " after 60 s"})`); }
   const base = `http://127.0.0.1:${port}`;
   let list = [];
   for (let i = 0; i < 50; i++) { try { list = await (await fetch(base + "/json/list")).json(); if (list.some((t) => t.type === "page")) break; } catch {} await sleep(100); }
