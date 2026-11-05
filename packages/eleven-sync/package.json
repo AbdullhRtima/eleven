@@ -1,0 +1,11 @@
+{
+  "name": "eleven-sync",
+  "version": "0.0.1",
+  "description": "Machine-side sync for the eleven ledger: watches eleven/, builds the manifest and hash-chained deltas.",
+  "license": "MIT",
+  "type": "module",
+  "bin": { "eleven-sync": "bin/eleven-sync.js" },
+  "files": ["bin", "src"],
+  "engines": { "node": ">=20" },
+  "scripts": { "test": "node --test \"test/*.test.mjs\"" }
+}
