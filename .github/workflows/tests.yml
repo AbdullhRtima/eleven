@@ -1,0 +1,45 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    env:
+      CHROME_NO_SANDBOX: "1"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Check Node and find Chrome
+        run: |
+          node --version
+          major=$(node -p "process.versions.node.split('.')[0]")
+          if [ "$major" -lt 22 ]; then
+            echo "::error::Node 22+ is required (ui/test/cdp.mjs); this runner has $(node --version)"
+            exit 1
+          fi
+          chrome=$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)
+          if [ -z "$chrome" ]; then
+            echo "::error::No Chrome found on the runner"
+            exit 1
+          fi
+          echo "CHROME=$chrome" >> "$GITHUB_ENV"
+          "$chrome" --version
+      - name: UI tests
+        run: node ui/test/run.mjs
+      - name: UI mutants (every one must fail the suite)
+        run: node ui/test/run.mjs --mutants
+      - name: ledger-core extraction is up to date
+        run: node scripts/extract-ledger-core.mjs --check
+      - name: ledger-core tests
+        run: node --test "packages/ledger-core/test/*.test.mjs"
+      - name: eleven-protocol tests
+        run: node --test "packages/eleven-protocol/test/*.test.mjs"
+      - name: eleven-sync tests
+        run: node --test "packages/eleven-sync/test/*.test.mjs"

@@ -10,7 +10,8 @@ export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export async function launch({ width = 1280, height = 900 } = {}) {
   if (!fs.existsSync(CHROME)) throw new Error(`Chrome not found at ${CHROME}. Set CHROME=/path/to/chrome.`);
   const ud = fs.mkdtempSync(path.join(os.tmpdir(), "eleven-ui-test-chrome-"));
-  const proc = spawn(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run", "--no-default-browser-check",
+  const sandbox = process.env.CHROME_NO_SANDBOX === "1" ? ["--no-sandbox"] : []; // CI only: runner Chrome can't create its sandbox
+  const proc = spawn(CHROME, [...sandbox, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run", "--no-default-browser-check",
     "--allow-file-access-from-files", "--remote-debugging-port=0", `--user-data-dir=${ud}`, `--window-size=${width},${height}`, "about:blank"], { stdio: "ignore" });
   let port;
   for (let i = 0; i < 100 && !port; i++) {
