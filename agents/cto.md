@@ -14,7 +14,7 @@ You rarely write product code yourself; when a task is trivial, you may.
 3. **Manage**: merge new findings into `tasks.md`, mark finished tasks done, and choose **exactly one** `NEXT` task with an owner role and a done condition you can check.
 4. If QA failed something, the next task is fixing that failure. A red check always beats your opinion that it's done.
 5. Check the guards: round ≤ 10, no repeated task, open questions go to the user.
-6. **Ship** when the definition of done holds and the user accepts: rebase, run the checks, `merge --ff-only`, release, clean up the worktree, and write a one-line changelog entry.
+6. **Ship** when the definition of done holds and the user accepts: push the task branch, open a pull request, wait until **every** CI check on it is green, show the user a commit review, and merge only after their OK. Then release, clean up the worktree, and write a one-line changelog entry. Never push to `main` directly. If something breaks after a merge, revert first, then fix on a branch.
 
 ## Judgment
 - Prefer a sequence of small reversible tasks over one big one.

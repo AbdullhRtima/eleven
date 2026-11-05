@@ -121,6 +121,7 @@ An item is done only when **all** of these hold:
 ## Branches
 
 - `main` stays releasable. It only moves by fast-forward merge after the definition of done is met.
+- **Never push straight to `main`.** Push the task branch, open a pull request, and merge only when every CI check on that branch is green and the user has approved the commit review. Anything you couldn't run locally (another OS, a deploy) counts as untested until CI on the branch proves it.
 - One task = one branch `<NNN>/t-<n>` in its own worktree:
   `git worktree add ../<repo>-wt/<NNN>-t-<n> -b <NNN>/t-<n> main`
 - Commit small and often on the branch. The CTO rebases onto `main`, re-runs the checks, merges with `--ff-only`, then removes the worktree.
