@@ -1,7 +1,7 @@
 # Install eleven into a project as .\eleven, hidden from git via .git\info\exclude.
 #   .\install.ps1 [project_dir]            install; never overwrites existing files
 #   .\install.ps1 -Update [project_dir]    git pull the kit, then refresh AGENTS.md, agents\, templates\, docs\, ui\
-#   .\install.ps1 -WithSync                also install eleven-sync (phone app, paid beta; needs Node 20+), no question asked
+#   .\install.ps1 -WithSync                also install eleven-sync (phone app, paid beta; needs Node 22+), no question asked
 #   .\install.ps1 -NoSync                  never install eleven-sync and never ask
 # GNU-style flags work too (--update, --with-sync, --no-sync), before or after project_dir.
 # The project's own files (project.md, work\, decisions\) are never overwritten.
@@ -136,13 +136,13 @@ function Install-Sync {
   # Install eleven-sync into eleven\.sync-bin. A problem here never fails the kit install.
   Invoke-Native node --version
   if ($script:nativeCode -ne 0) {
-    [Console]::Error.WriteLine("eleven-sync needs Node 20 or newer, and Node was not found.")
+    [Console]::Error.WriteLine("eleven-sync needs Node 22 or newer, and Node was not found.")
     [Console]::Error.WriteLine("Get it from https://nodejs.org, then run the installer again with -WithSync.")
     return
   }
   $nodeVersion = $script:nativeOut.Trim()
-  if ($nodeVersion -notmatch '^v(\d+)\.' -or [int]$Matches[1] -lt 20) {
-    [Console]::Error.WriteLine("eleven-sync needs Node 20 or newer; found $nodeVersion.")
+  if ($nodeVersion -notmatch '^v(\d+)\.' -or [int]$Matches[1] -lt 22) {
+    [Console]::Error.WriteLine("eleven-sync needs Node 22 or newer; found $nodeVersion.")
     [Console]::Error.WriteLine("Get a newer Node from https://nodejs.org, then run the installer again with -WithSync.")
     return
   }
@@ -205,7 +205,7 @@ if ($NoSync) {
 } elseif ($WithSync -or (Test-Path -LiteralPath (Join-Path $dest ".sync"))) {
   $wantSync = $true
 } elseif ((-not $Update) -and [Environment]::UserInteractive -and -not [Console]::IsInputRedirected -and -not [Console]::IsOutputRedirected) {
-  $answer = Read-Host "Use eleven on your phone (paid, beta)? This installs eleven-sync and needs Node 20+. [y/N]"
+  $answer = Read-Host "Use eleven on your phone (paid, beta)? This installs eleven-sync and needs Node 22+. [y/N]"
   if ($answer -match '^[Yy]') { $wantSync = $true }
 }
 if ($wantSync) { Install-Sync }
