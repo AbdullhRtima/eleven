@@ -1,7 +1,7 @@
 // A simulated phone for the pairing tests (protocol 6.2 steps 2, 3, 7). It is written on purpose with node:crypto and none of the
 // code under test, so the two sides agreeing on the check words and the keys means something.
 import crypto from "node:crypto";
-import { WORDS } from "../src/wordlist.js";
+import { WORDS } from "../../eleven-protocol/src/wordlist.js";
 
 const b64u = (b) => Buffer.from(b).toString("base64url");
 const unb64u = (s) => Buffer.from(s, "base64url");
@@ -37,6 +37,17 @@ export function wordsFor({ pairingId, fpr, kx, auth, act, accountId }) {
   return [0, 1, 2, 3].map((i) => WORDS[parseInt(bits.slice(i * 11, i * 11 + 11), 2)]);
 }
 
+// The machine's device id as the relay lists it (signed GET /v1/vault/:vault/devices, by the freshly registered phone).
+async function relayMachine(relayUrl, vault, deviceId, au) {
+  const ch = await (await fetch(new URL("/v1/challenge", relayUrl), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ deviceId }) })).json();
+  const pathq = `/v1/vault/${vault}/devices`;
+  const msg = Buffer.from(`eleven/v1/auth\nGET\n${pathq}\n${ch.nonce}\n${b64u(crypto.createHash("sha256").update("").digest())}`);
+  const sig = b64u(crypto.sign("sha256", msg, { key: au.privateKey, dsaEncoding: "ieee-p1363" }));
+  const r = await fetch(new URL(pathq, relayUrl), { headers: { authorization: `Eleven-Sig dev=${deviceId}, nonce=${ch.nonce}, sig=${sig}` } });
+  const list = (await r.json()).devices ?? [];
+  return list.find((d) => d.role === "machine")?.deviceId ?? null;
+}
+
 /**
  * claimLink({ relayUrl, link, token, accountId, ... }) -> a phone that has claimed. `wrongSecret` / `claimOverride` make bad claims.
  * Returns { status, body, deviceId, words, finish() } where finish() long-polls for the answer and derives the keys.
@@ -58,11 +69,13 @@ export async function claimLink({ relayUrl, link, token, accountId = "acc_alice"
   const res = await post(`/v1/pair/${pairingId}/claim`, { method: "POST", body: JSON.stringify({ phoneAuthPub: postAuthPub ?? claim.phoneAuthPub, sealed }) });
   const body = await res.json().catch(() => ({}));
   const deviceId = body.deviceId;
+  const claimed_deviceId = deviceId;
   const words = wordsFor({ pairingId, fpr, kx: spki(kx), auth: spki(au), act: actPub, accountId });
   return {
     status: res.status, body, deviceId, words, pairingId, secret, keys: { kx, au, act },
     // long-poll GET /v1/pair/:id/reply until the sealed accept (or an error) arrives; then step 7
-    async finish() {
+    // `relayMachineId` overrides what the relay reports as the machine's device (a test of the mismatch refusal).
+    async finish({ relayMachineId } = {}) {
       for (let i = 0; i < 100; i++) {
         const r = await post(`/v1/pair/${pairingId}/reply`, { method: "GET" });
         const b = await r.json().catch(() => ({}));
@@ -71,6 +84,10 @@ export async function claimLink({ relayUrl, link, token, accountId = "acc_alice"
         const a = open(secret, pairingId, "accept", b.sealed);
         const machineKx = unb64u(a.machineKxPub), machineSig = unb64u(a.machineSigPub);
         if (!sha256(machineKx, machineSig).equals(fpr)) return { ok: false, error: "fingerprint_mismatch" };
+        // the accept names the machine's own device id; it must be the machine the relay lists for the vault (the relay's list is a hint, the sealed id is the proof)
+        if (typeof a.machineDeviceId !== "string") return { ok: false, error: "machine_device_missing" };
+        const listed = relayMachineId ?? await relayMachine(relayUrl, a.vault, claimed_deviceId, au);
+        if (a.machineDeviceId !== listed) return { ok: false, error: "machine_device_mismatch" };
         const shared = crypto.diffieHellman({ privateKey: kx.privateKey, publicKey: crypto.createPublicKey({ key: machineKx, format: "der", type: "spki" }) });
         const root = hkdf(shared, sha256(Buffer.from(pairingId), secret), "eleven/v1/root");
         const k = (dir) => hkdf(root, Buffer.alloc(0), `eleven/v1/${dir}|${a.vault}|${a.deviceId}|0`);

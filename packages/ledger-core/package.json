@@ -5,8 +5,8 @@
   "license": "MIT",
   "type": "module",
   "main": "index.js",
-  "exports": "./index.js",
-  "files": ["index.js"],
+  "exports": { ".": "./index.js", "./purify-config.js": "./purify-config.js" },
+  "files": ["index.js", "purify-config.js"],
   "scripts": {
     "test": "node --test"
   }

@@ -1,0 +1,60 @@
+{
+  "note": "Synthetic. Seals use a fixed 12-byte IV so the output is reproducible; real seals use a random IV. Kpair = HKDF-SHA-256(secret, salt = UTF-8 pairingId, info = 'eleven/v1/pair') -> AES-256-GCM, AAD = 'eleven/v1/<claim|accept>|' + pairingId. sealed = b64u(iv || ciphertext || tag). Plaintext = JSON.stringify(object) in the key order shown (NOT JCS).",
+  "pairingId": "pr_AbCdEfGhIjKlMnOpQrStUv",
+  "secretHex": "01080f161d242b323940474e555c636a71787f868d949ba2a9b0b7bec5ccd3da",
+  "fprHex": "323940474e555c636a71787f868d949ba2a9b0b7bec5ccd3dae1e8eff6fd040b",
+  "accountId": "acc_alice",
+  "link": {
+    "pwa": "https://m.eleven.rtima.org",
+    "text": "https://m.eleven.rtima.org/pair#v1.pr_AbCdEfGhIjKlMnOpQrStUv.AQgPFh0kKzI5QEdOVVxjanF4f4aNlJuiqbC3vsXM09o.MjlAR05VXGNqcXh_ho2Um6KpsLe-xczT2uHo7_b9BAs"
+  },
+  "words": {
+    "phoneKxPubHex": "030a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dce3eaf1f8ff060d141b222930373e454c535a61686f767d848b9299a0a7aeb5bcc3cad1d8dfe6edf4fb020910171e252c333a41484f565d646b7279",
+    "phoneAuthPubHex": "0910171e252c333a41484f565d646b727980878e959ca3aab1b8bfc6cdd4dbe2e9f0f7fe050c131a21282f363d444b525960676e757c838a91989fa6adb4bbc2c9d0d7dee5ecf3fa01080f161d242b323940474e555c636a71787f",
+    "phoneActPubHex": "11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dce3eaf1f8ff060d141b222930373e454c535a61686f767d848b9299a0a7aeb5bcc3cad1d8dfe6edf4fb020910171e252c333a41484f565d646b72798087",
+    "withAct": [
+      "walk",
+      "wheel",
+      "sorry",
+      "pistol"
+    ],
+    "readOnly": [
+      "misery",
+      "original",
+      "attract",
+      "visa"
+    ]
+  },
+  "claim": {
+    "ivHex": "646b727980878e959ca3aab1",
+    "object": {
+      "phoneKxPub": "AwoRGB8mLTQ7QklQV15lbHN6gYiPlp2kq7K5wMfO1dzj6vH4_wYNFBsiKTA3PkVMU1phaG92fYSLkpmgp661vMPK0djf5u30-wIJEBceJSwzOkFIT1ZdZGtyeQ",
+      "phoneAuthPub": "CRAXHiUsMzpBSE9WXWRrcnmAh46VnKOqsbi_xs3U2-Lp8Pf-BQwTGiEoLzY9REtSWWBnbnV8g4qRmJ-mrbS7wsnQ197l7PP6AQgPFh0kKzI5QEdOVVxjanF4fw",
+      "phoneActKey": {
+        "alg": "es256",
+        "credId": "c1",
+        "pub": "ERgfJi00O0JJUFdeZWxzeoGIj5adpKuyucDHztXc4-rx-P8GDRQbIikwNz5FTFNaYWhvdn2Ei5KZoKeutbzDytHY3-bt9PsCCRAXHiUsMzpBSE9WXWRrcnmAhw"
+      },
+      "deviceName": "Pixel 8",
+      "accountId": "acc_alice",
+      "emailMasked": "a•••@example.com",
+      "mode": "write"
+    },
+    "plaintext": "{\"phoneKxPub\":\"AwoRGB8mLTQ7QklQV15lbHN6gYiPlp2kq7K5wMfO1dzj6vH4_wYNFBsiKTA3PkVMU1phaG92fYSLkpmgp661vMPK0djf5u30-wIJEBceJSwzOkFIT1ZdZGtyeQ\",\"phoneAuthPub\":\"CRAXHiUsMzpBSE9WXWRrcnmAh46VnKOqsbi_xs3U2-Lp8Pf-BQwTGiEoLzY9REtSWWBnbnV8g4qRmJ-mrbS7wsnQ197l7PP6AQgPFh0kKzI5QEdOVVxjanF4fw\",\"phoneActKey\":{\"alg\":\"es256\",\"credId\":\"c1\",\"pub\":\"ERgfJi00O0JJUFdeZWxzeoGIj5adpKuyucDHztXc4-rx-P8GDRQbIikwNz5FTFNaYWhvdn2Ei5KZoKeutbzDytHY3-bt9PsCCRAXHiUsMzpBSE9WXWRrcnmAhw\"},\"deviceName\":\"Pixel 8\",\"accountId\":\"acc_alice\",\"emailMasked\":\"a•••@example.com\",\"mode\":\"write\"}",
+    "sealed": "ZGtyeYCHjpWco6qx_ZbaR72w7QTYGXGhJzkfFNU0OKXz4dbr42J3gHLctjgfm6qQpkyf5ZdeVFoaRJv8Z7pcnnfHtHunKyviXy-82zAhSlRvPNhbCY62QXJF4Dm_NoHVU2eVkw4cQzYtWvDHnGxvgok8-rtIH1nRUtPR9jw8tf04Ut12t2H8yIpt5FDjkGiDligP_zvOB5TaCIHtz38kOs2eIwXK8gOJ8J7g5pyDN3-FUOlJ2OsOT2sqeLCrS6ZUUgrJeyn-JdW0RRDzUyaZ0ZbTs5X4zWCTgEYrRCtAKcW1HN_vjKHQVdv1GOmbj6UFtpzrDr0daREoWB9eYAAnF-MRqUZ70schYtQ2-_5YJw61nNYPfWrccdzbOidwxB3ihBJ5XpKXqfS6sxPQegbgpxRD5bGSXN2MntHeA95dH_j_TpXLn4kyb6qDSsbWtMC-DrGpzbGNCDzvoxB0jfq_M1L8fWcyZBrBY-balOm7gDaMAOn82ZsYRBNGZzJc5Jf3wYlwFpoatRmRCsDjwpns5U681qHJPgIWAQInCdMMJmc5IO458k5rW8Yp3Q_hnygGFjchcbKIUl6NYBzRMDIwJfjXgnYn9KluTQP-eGN0Qu6-RfO1mnmJUo-3UYXf8rHXaSoy1tAQieZWyPYIrmu3drVTkX1CAvRsr7XFruqS77q_Xle76s3954qjeHscwT2X_IRojkx53WX3I-7nfXDEEhGhr-fRKGsAxEd_C82CrcT0KG61HXdZ3IxE2NV5J8Rm88rFY2g5jQ"
+  },
+  "accept": {
+    "ivHex": "787f868d949ba2a9b0b7bec5",
+    "object": {
+      "machineKxPub": "FRwjKjE4P0ZNVFtiaXB3foWMk5qhqK-2vcTL0tng5-71_AMKERgfJi00O0JJUFdeZWxzeoGIj5adpKuyucDHztXc4-rx-P8GDRQbIikwNz5FTFNaYWhvdn2Eiw",
+      "machineSigPub": "HiUsMzpBSE9WXWRrcnmAh46VnKOqsbi_xs3U2-Lp8Pf-BQwTGiEoLzY9REtSWWBnbnV8g4qRmJ-mrbS7wsnQ197l7PP6AQgPFh0kKzI5QEdOVVxjanF4f4aNlA",
+      "vault": "vlt_AAAAAAAAAAAAAAAAAAAAAA",
+      "deviceId": "dev_BBBBBBBBBBBBBBBBBBBBBB",
+      "machineLabel": "mac-mini",
+      "mode": "write",
+      "machineDeviceId": "dev_MMMMMMMMMMMMMMMMMMMMMM"
+    },
+    "plaintext": "{\"machineKxPub\":\"FRwjKjE4P0ZNVFtiaXB3foWMk5qhqK-2vcTL0tng5-71_AMKERgfJi00O0JJUFdeZWxzeoGIj5adpKuyucDHztXc4-rx-P8GDRQbIikwNz5FTFNaYWhvdn2Eiw\",\"machineSigPub\":\"HiUsMzpBSE9WXWRrcnmAh46VnKOqsbi_xs3U2-Lp8Pf-BQwTGiEoLzY9REtSWWBnbnV8g4qRmJ-mrbS7wsnQ197l7PP6AQgPFh0kKzI5QEdOVVxjanF4f4aNlA\",\"vault\":\"vlt_AAAAAAAAAAAAAAAAAAAAAA\",\"deviceId\":\"dev_BBBBBBBBBBBBBBBBBBBBBB\",\"machineLabel\":\"mac-mini\",\"mode\":\"write\",\"machineDeviceId\":\"dev_MMMMMMMMMMMMMMMMMMMMMM\"}",
+    "sealed": "eH-GjZSboqmwt77FWy_Uq3t2VJXTTIORBx3PJUxipZJRY2QxQU8tW1k8WGj1GpFq53SNdaKL8RsUZm8TdkCL1uOYUJKBGVyFfrflp0n4JPJDFNYzNGAoh9SOwX7H-Z21rDdX4NiGwIsGYo6toytKBcdcygn2NhX9Jv23Q015Xp4wXnKWTncZr8XusEJogmXdPOEVU9OHRFWDEVIsXstH2uJOaerPKhcuu3K97k_DVjCPr_WXtqw1z0ALYgQsC1axvSBSxNivh8kad8PT492gG0nxxpRhD4PYHeRIeZJ3nkUyI6xO-Y6UzDukXtkEy5AiaQyf49cna8EoTDeKyMraKfhkjaIXId2i-SmZb61GgLl1gA20KhduE8ZitTUCre0_pdCqrdugUYK97HGXpdLlssRaAwNbhxr7h7WcTUhdUmJA100pXjMiuRbHliBwVyu3tvO-FGslfVcxIEy74GQstHjyiGZwy418HzS-93FyP0-uYA3CpBmxD9D1ZWlJSzwC7x9EGsKDc6FeOl8f0pbm2tBiI9aqW4h3vUsf5z2wkhU24EMf1GkM1VKI4iTJ8m-q_PG_mmfhXPGk5dIjLqsTS1bxoYemrQKCDdFCkgd2-Wu6GpKrqOzlQoSVZg"
+  }
+}

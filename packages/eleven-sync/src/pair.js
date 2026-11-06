@@ -10,56 +10,18 @@ import crypto from "node:crypto";
 import {
   b64uEncode, b64uDecode, sha256, generateKeyAgreementKeyPair, generateSigningKeyPair, generateKfid,
   exportPublicKey, importPublicKey, fingerprint, deriveRoot, deriveMessageKeys,
+  DEVICE_ID, DEVICE_NAME, PAIRING_ID, openClaim, sealAccept, buildLink, checkWords,
 } from "../../eleven-protocol/src/index.js";
 import { findEleven } from "./find.js";
 import { ensurePrivateDir, readPrivate, writePrivateAtomic } from "./fsafe.js";
 import { createRelayClient, createVault, RelayError } from "./relay-client.js";
 import { encodeQr, qrToText } from "./qr.js";
-import { WORDS } from "./wordlist.js";
 
 export const DEFAULT_RELAY = "https://relay.eleven.rtima.org";
 export const DEFAULT_PWA = "https://m.eleven.rtima.org";
 export const PAIRING_MS = 5 * 60_000;
-const DEVICE_NAME = /^[A-Za-z0-9 ._'-]{1,32}$/;
-const DEVICE_ID = /^dev_[A-Za-z0-9_-]{22}$/;
-const PAIRING_ID = /^pr_[A-Za-z0-9_-]{22}$/;
-const enc = new TextEncoder();
 const subtle = globalThis.crypto.subtle;
 
-const concat = (...a) => { const o = new Uint8Array(a.reduce((n, x) => n + x.length, 0)); let p = 0; for (const x of a) { o.set(x, p); p += x.length; } return o; };
-
-// ---- Kpair and the sealed claim / accept (6.2 steps 3 and 6). Sealed = b64u(iv(12) || ciphertext || tag).
-export async function pairKey(secret, pairingId, usage) {
-  const ikm = await subtle.importKey("raw", secret, "HKDF", false, ["deriveKey"]);
-  return subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt: enc.encode(pairingId), info: enc.encode("eleven/v1/pair") }, ikm, { name: "AES-GCM", length: 256 }, false, [usage]);
-}
-export async function sealPairing(secret, pairingId, purpose, obj) {
-  const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
-  const ct = new Uint8Array(await subtle.encrypt({ name: "AES-GCM", iv, additionalData: enc.encode(`eleven/v1/${purpose}|${pairingId}`) }, await pairKey(secret, pairingId, "encrypt"), enc.encode(JSON.stringify(obj))));
-  return b64uEncode(concat(iv, ct));
-}
-export async function openSealed(secret, pairingId, purpose, sealed) {
-  const raw = b64uDecode(sealed);
-  if (raw.length < 12 + 16) throw new Error("sealed too short");
-  const pt = await subtle.decrypt({ name: "AES-GCM", iv: raw.subarray(0, 12), additionalData: enc.encode(`eleven/v1/${purpose}|${pairingId}`) }, await pairKey(secret, pairingId, "decrypt"), raw.subarray(12));
-  return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(pt));
-}
-
-// ---- check words (6.3): 4 x 11 bits of H("eleven/v1/words" | pairingId | fpr | H(phoneKxPub || phoneAuthPub || PACT pub) | accountId)
-// "|" is the byte 0x7c between the fields; fpr and the inner hash are the raw 32 bytes; the three public keys are SPKI DER
-// (PACT pub = the bytes of the claim's `phoneActKey.pub`, or nothing for a read-only phone).
-export async function checkWords({ pairingId, fpr, phoneKxPub, phoneAuthPub, phoneActPub = new Uint8Array(0), accountId }) {
-  const bar = enc.encode("|");
-  const inner = await sha256(concat(phoneKxPub, phoneAuthPub, phoneActPub));
-  const h = await sha256(concat(enc.encode("eleven/v1/words"), bar, enc.encode(pairingId), bar, fpr, bar, inner, bar, enc.encode(accountId)));
-  const words = [];
-  for (let i = 0; i < 4; i++) {
-    let idx = 0;
-    for (let b = 0; b < 11; b++) { const bit = i * 11 + b; idx = (idx << 1) | ((h[bit >> 3] >> (7 - (bit & 7))) & 1); }
-    words.push(WORDS[idx]);
-  }
-  return words;
-}
 
 // ---- machine keys on disk (0700 dir, 0600 file, as fsafe.js). The OS keychain comes later (protocol 3).
 const stripCtl = (s, max = 64) => (typeof s === "string" ? s : "").replace(/[\p{C}\u2028\u2029\u202a-\u202e\u2066-\u2069]/gu, "").slice(0, max);
@@ -178,7 +140,7 @@ export async function pair({
     const left = () => expiresAt - Date.now();
 
     secret = globalThis.crypto.getRandomValues(new Uint8Array(32));
-    const link = `${pwa}/pair#v1.${pairingId}.${b64uEncode(secret)}.${fpr.b64u}`;
+    const link = buildLink(pwa, { pairingId, secret, fpr: fpr.bytes });
 
     // one pending event at a time: the first claim, or the end
     let claimFrame = null;
@@ -212,7 +174,7 @@ export async function pair({
     const refuse = (why) => { try { channel.refuse(); } catch { /* socket gone */ } wipe(); say(`${why} Nothing was paired.\n`); return 1; };
     const frame = ev.m;
     let claim;
-    try { claim = await openSealed(secret, pairingId, "claim", frame.sealed); }
+    try { claim = await openClaim(secret, pairingId, frame.sealed); }
     catch { return refuse("The request could not be opened (it was not made from this code, or it was changed on the way)."); }
     let phoneKx, phoneAuth, phoneActPub = new Uint8Array(0);
     try {
@@ -252,8 +214,9 @@ export async function pair({
     const raw = async (k) => b64uEncode(new Uint8Array(await subtle.exportKey("raw", k)));
     const deviceKeys = { send: await raw(mk.send), recv: await raw(mk.recv) };   // protocol 3: the OS keychain later; 0600 file for now
     const label = stripCtl(os.hostname(), 32).replace(/[^A-Za-z0-9 ._'-]/g, "") || "machine";
-    const sealed = await sealPairing(secret, pairingId, "accept", {
+    const sealed = await sealAccept(secret, pairingId, {
       machineKxPub: b64uEncode(machine.mkxSpki), machineSigPub: b64uEncode(machine.msigSpki), vault: machine.record.vault, deviceId: frame.deviceId, machineLabel: label, mode,
+      machineDeviceId: machine.record.deviceId,
     });
     wipe();                                                                         // single use: the secret is gone before anything else happens
     for (let i = events.length - 1; i >= 0; i--) if (events[i].k === "result") events.splice(i, 1);   // an error the relay sent BEFORE our accept (e.g. for a stray frame) is not the answer to it

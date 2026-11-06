@@ -442,6 +442,7 @@ const S = {
 // that could hit the UI's own CSS or handlers, and nothing that loads from the network on its own (QA B1).
 // No inline SVG or MathML (security M4): they could cover the reader, crash enhanceHtml, and are where most mXSS lives.
 // <input> survives only as a disabled task-list checkbox (QA N2); every other input is removed in the hooks below.
+/* @purify-config:start */
 const PURIFY = {
   FORBID_TAGS: ["svg", "math", "style", "link", "meta", "base", "form", "button", "textarea", "select", "option", "optgroup", "fieldset",
     "label", "output", "datalist", "iframe", "frame", "frameset", "object", "embed", "applet", "portal", "audio", "video", "source",
@@ -466,6 +467,7 @@ if (window.DOMPurify) DOMPurify.addHook("afterSanitizeAttributes", (node) => {
   node.removeAttribute("src");                       // relative / file: / blob: images can't come from the ledger anyway
   if (/^(https?:)?\/\//i.test(src)) node.setAttribute("data-remote", src.startsWith("//") ? "https:" + src : src);
 });
+/* @purify-config:end */
 const purify = (html) => DOMPurify.sanitize(html, PURIFY);
 function mdHtml(text) {
   if (!window.marked || !window.DOMPurify) return `<pre class="rawpre">${esc(text)}</pre>`;
