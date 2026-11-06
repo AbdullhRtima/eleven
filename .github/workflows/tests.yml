@@ -37,6 +37,8 @@ jobs:
         run: node ui/test/run.mjs --mutants
       - name: ledger-core extraction is up to date
         run: node scripts/extract-ledger-core.mjs --check
+      - name: DOMPurify config extraction is up to date
+        run: node scripts/extract-purify-config.mjs --check
       - name: ledger-core tests
         run: node --test "packages/ledger-core/test/*.test.mjs"
       - name: eleven-protocol tests
