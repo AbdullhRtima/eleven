@@ -96,7 +96,7 @@ It refreshes `AGENTS.md`, `agents/`, `templates/`, `docs/` and `ui/`. Your `proj
 **Phone sync (optional).** Say yes to the question, or pass `--with-sync`, and the installer copies
 `eleven-sync` into `eleven/.sync-bin/`, inside the project, with an `eleven-sync` launcher
 (`eleven-sync.cmd` on Windows). It does not use npm, `sudo` or a global install, and it never writes
-inside your clone of the kit, so it no longer depends on where your clone is. It needs Node 20+; without
+inside your clone of the kit, so it no longer depends on where your clone is. It needs Node 22+; without
 Node you get a message and the kit still installs. The choice is saved in `eleven/.sync`, so every
 `--update` refreshes the copy.
 </details>

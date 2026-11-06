@@ -2,7 +2,7 @@
 # Install eleven into a project as ./eleven, hidden from git via .git/info/exclude.
 #   ./install.sh [project_dir]            install; never overwrites existing files
 #   ./install.sh --update [project_dir]   git pull the kit, then refresh AGENTS.md, agents/, templates/, docs/, ui/
-#   ./install.sh --with-sync              also install eleven-sync (phone app, paid beta; needs Node 20+), no question asked
+#   ./install.sh --with-sync              also install eleven-sync (phone app, paid beta; needs Node 22+), no question asked
 #   ./install.sh --no-sync                never install eleven-sync and never ask
 # Flags can go before or after project_dir. The project's own files (project.md, work/, decisions/)
 # are never overwritten.
@@ -91,7 +91,7 @@ main() {
     want_sync=1
   elif (( ! update )) && [[ -t 0 && -t 1 ]]; then
     local answer=""
-    read -r -p "Use eleven on your phone (paid, beta)? This installs eleven-sync and needs Node 20+. [y/N] " answer || true
+    read -r -p "Use eleven on your phone (paid, beta)? This installs eleven-sync and needs Node 22+. [y/N] " answer || true
     [[ "$answer" =~ ^[Yy] ]] && want_sync=1
   fi
   if (( want_sync )); then install_sync "$kit" "$dest"; fi
@@ -107,13 +107,13 @@ main() {
 install_sync() {
   local kit="$1" dest="$2" node_major
   if ! command -v node >/dev/null 2>&1; then
-    echo "eleven-sync needs Node 20 or newer, and Node was not found." >&2
+    echo "eleven-sync needs Node 22 or newer, and Node was not found." >&2
     echo "Get it from https://nodejs.org, then run the installer again with --with-sync." >&2
     return 0
   fi
   node_major="$(node --version | sed 's/^v//; s/\..*//')"
-  if ! [[ "$node_major" =~ ^[0-9]+$ ]] || (( node_major < 20 )); then
-    echo "eleven-sync needs Node 20 or newer; found $(node --version)." >&2
+  if ! [[ "$node_major" =~ ^[0-9]+$ ]] || (( node_major < 22 )); then
+    echo "eleven-sync needs Node 22 or newer; found $(node --version)." >&2
     echo "Get a newer Node from https://nodejs.org, then run the installer again with --with-sync." >&2
     return 0
   fi

@@ -15,8 +15,8 @@ test("--help and --version", () => {
   assert.match(run(["--version"]).stdout, /^0\.0\.1\n$/);
 });
 
-test("pair, start, devices are stubs", () => {
-  for (const c of ["pair", "start", "devices"]) assert.match(run([c]).stdout, /not built yet/);
+test("devices is a stub", () => {
+  for (const c of ["devices"]) assert.match(run([c]).stdout, /not built yet/);
 });
 
 test("status prints items, kinds and the manifest summary", () => {

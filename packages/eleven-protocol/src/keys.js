@@ -55,13 +55,19 @@ export async function deriveRoot({ privateKey, peerPublicKey, pairingId, secret 
 }
 
 // K_m2p and K_p2m: AES-256-GCM, info = "eleven/v1/<dir>|vault|deviceId|epoch", empty salt.
+// L6: each key is bound to its direction by its WebCrypto usages. The machine gets { send: K_m2p (encrypt only), recv: K_p2m
+// (decrypt only) } and the phone the reverse, so a side cannot encrypt with the key it receives with, and a stolen key object
+// of one direction cannot forge the other. `role` is "machine" or "phone" and is required. The key bytes are the same as before
+// (the vectors do not change); only the usages do.
 // v1: epoch is always 0. `extractable` exists for test vectors only; production code leaves it false.
-export async function deriveMessageKeys(root, { vault, deviceId, epoch = 0, extractable = false }) {
+export async function deriveMessageKeys(root, { vault, deviceId, role, epoch = 0, extractable = false }) {
   if (epoch !== 0) throw new RangeError("deriveMessageKeys: v1 supports epoch 0 only");
+  if (role !== "machine" && role !== "phone") throw new TypeError('deriveMessageKeys: role must be "machine" or "phone"');
   for (const s of [vault, deviceId]) if (typeof s !== "string" || s === "" || s.includes("|")) throw new TypeError("deriveMessageKeys: bad vault or deviceId");
-  const one = (dir) => subtle().deriveKey(
+  const one = (dir, usages) => subtle().deriveKey(
     { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0), info: enc.encode(`eleven/v1/${dir}|${vault}|${deviceId}|${epoch}`) },
-    root, { name: "AES-GCM", length: 256 }, extractable, ["encrypt", "decrypt"]);
-  const [m2p, p2m] = await Promise.all([one("m2p"), one("p2m")]);
-  return { m2p, p2m };
+    root, { name: "AES-GCM", length: 256 }, extractable, usages);
+  const machine = role === "machine";
+  const [send, recv] = await Promise.all([one(machine ? "m2p" : "p2m", ["encrypt"]), one(machine ? "p2m" : "m2p", ["decrypt"])]);
+  return { send, recv };
 }

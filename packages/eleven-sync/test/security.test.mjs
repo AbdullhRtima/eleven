@@ -153,7 +153,7 @@ test("M3: actions-state.json drops entries older than 10 days and is capped in c
   assert.equal(Object.keys(s.seen).length, MAX_ENTRIES);
   assert.ok(!("d|old" in s.seen) && !("d|old" in s.cancelled) && "d|new" in s.cancelled);
   assert.ok("d|0" in s.seen && !("d|" + (MAX_ENTRIES + 499) in s.seen), "the oldest go first");
-  assert.deepEqual(s.rate, {}, "idle rate records are dropped");
+  assert.deepEqual(Object.keys(s.rate), [], "idle rate records are dropped");
 });
 
 test("M3: actions.log rotates at 1 MB and keeps 3 files", () => {
@@ -243,7 +243,7 @@ test("L4: saveState and saveActionState refuse a symlink and never write through
   assert.equal(fs.statSync(path.join(d2, "state.json")).mode & 0o777, 0o600);
   const log = path.join(d2, "actions.log");
   fs.symlinkSync(victim, log);
-  assert.throws(() => appendLog(d2, { now: NOW, device: "p", kind: "answer", item: null, actionId: "x", hash: "h", result: "ok" }));
+  appendLog(d2, { now: NOW, device: "p", kind: "answer", item: null, actionId: "x", hash: "h", result: "ok" });   // E5: a non-regular file is skipped with a warning, never written through
   assert.equal(fs.readFileSync(victim, "utf8"), "KEEP");
 });
 
@@ -257,13 +257,13 @@ test("L6: manifest.js uses the protocol package's JCS", () => {
 });
 
 // ---- L7
-test("L7: only mode \"act\" may write; anything else is read-only", async () => {
+test("L7: only mode \"write\" may write; anything else is read-only", async () => {
   const L = ledger(), before = snapshot(L.eleven);
-  for (const mode of [undefined, "read", "Read", "READ", "write", "ACT", "act ", "", null, 1, true, {}]) {
+  for (const mode of [undefined, "read", "Read", "READ", "WRITE", "Write", "write ", "act", "", null, 1, true, {}]) {
     assert.equal(await st(L, h.answerBrief(L), { device: h.device({ mode }) }), "refused:read_only", String(mode));
   }
   assert.deepEqual(snapshot(L.eleven), before);
   const noMode = { id: "dev_phone1", name: "Pixel 8" };
   assert.equal(await st(L, h.newItem("X"), { device: noMode }), "refused:read_only");
-  assert.equal(await st(L, h.answerBrief(L), { device: h.device({ mode: "act" }) }), "written");
+  assert.equal(await st(L, h.answerBrief(L), { device: h.device({ mode: "write" }) }), "written");
 });

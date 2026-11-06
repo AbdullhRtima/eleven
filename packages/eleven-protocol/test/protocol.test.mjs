@@ -235,18 +235,19 @@ test("keys: both sides derive the same message keys; direction, vault, device an
   const secret = Uint8Array.from({ length: 32 }, (_, i) => i + 1);
   const rm = await deriveRoot({ privateKey: m.privateKey, peerPublicKey: p.publicKey, pairingId: "pr_xxxxxxxx", secret });
   const rp = await deriveRoot({ privateKey: p.privateKey, peerPublicKey: m.publicKey, pairingId: "pr_xxxxxxxx", secret });
-  const km = await deriveMessageKeys(rm, { vault: ids.vault, deviceId: ids.phone });
-  const kp = await deriveMessageKeys(rp, { vault: ids.vault, deviceId: ids.phone });
-  assert.equal(km.m2p.extractable, false);
-  const env = await seal(fieldsM2P(), innerManifest(), km.m2p);
-  assert.equal((await open(env, kp.m2p)).t, "manifest");
-  await rejects(open(env, kp.p2m), "decrypt_failed"); // each direction has its own key
-  const other = async (opts, dev = ids.phone, vault = ids.vault) => (await deriveMessageKeys(await deriveRoot({ privateKey: p.privateKey, peerPublicKey: m.publicKey, pairingId: "pr_xxxxxxxx", secret, ...opts }), { vault, deviceId: dev })).m2p;
+  const km = await deriveMessageKeys(rm, { vault: ids.vault, deviceId: ids.phone, role: "machine" });
+  const kp = await deriveMessageKeys(rp, { vault: ids.vault, deviceId: ids.phone, role: "phone" });
+  assert.equal(km.send.extractable, false);
+  const env = await seal(fieldsM2P(), innerManifest(), km.send);   // machine -> phone: K_m2p
+  assert.equal((await open(env, kp.recv)).t, "manifest");
+  await rejects(open(env, km.recv), "decrypt_failed"); // each direction has its own key
+  await rejects(open(env, kp.recv, { vault: "other" }), "decrypt_failed");
+  const other = async (opts, dev = ids.phone, vault = ids.vault) => (await deriveMessageKeys(await deriveRoot({ privateKey: p.privateKey, peerPublicKey: m.publicKey, pairingId: "pr_xxxxxxxx", secret, ...opts }), { vault, deviceId: dev, role: "phone" })).recv;
   await rejects(open(env, await other({ secret: Uint8Array.from({ length: 32 }, (_, i) => i + 2) })), "decrypt_failed");
   await rejects(open(env, await other({ pairingId: "pr_yyyyyyyy" })), "decrypt_failed");
   await rejects(open(env, await other({}, "dev_other")), "decrypt_failed");
   await rejects(open(env, await other({}, ids.phone, "vlt_other")), "decrypt_failed");
-  await assert.rejects(deriveMessageKeys(rm, { vault: ids.vault, deviceId: ids.phone, epoch: 1 }));
+  await assert.rejects(deriveMessageKeys(rm, { vault: ids.vault, deviceId: ids.phone, role: "machine", epoch: 1 }));
   await assert.rejects(deriveRoot({ privateKey: m.privateKey, peerPublicKey: p.publicKey, pairingId: "pr_xxxxxxxx", secret: new Uint8Array(0) }));
 });
 
@@ -269,9 +270,14 @@ test("vectors: independent derivation matches the checked-in values", async () =
   assert.equal(hex(await hkdf(root, new Uint8Array(0), `eleven/v1/m2p|${V.vault}|${V.phone}|0`)), V.kM2pHex);
   assert.equal(hex(await hkdf(root, new Uint8Array(0), `eleven/v1/p2m|${V.vault}|${V.phone}|0`)), V.kP2mHex);
   // 3. deriveRoot itself, on the vector inputs (32-byte secret), reproduces the vector keys
-  const lib = await deriveMessageKeys(await deriveRoot({ privateKey: mkx, peerPublicKey: pkxPub, pairingId: V.pairingId, secret }), { vault: V.vault, deviceId: V.phone, extractable: true });
-  assert.equal(hex(new Uint8Array(await subtle.exportKey("raw", lib.m2p))), V.kM2pHex);
-  assert.equal(hex(new Uint8Array(await subtle.exportKey("raw", lib.p2m))), V.kP2mHex);
+  const libRoot = await deriveRoot({ privateKey: mkx, peerPublicKey: pkxPub, pairingId: V.pairingId, secret });
+  const lib = await deriveMessageKeys(libRoot, { vault: V.vault, deviceId: V.phone, role: "machine", extractable: true });
+  const libPhone = await deriveMessageKeys(libRoot, { vault: V.vault, deviceId: V.phone, role: "phone", extractable: true });
+  const raw = async (k) => hex(new Uint8Array(await subtle.exportKey("raw", k)));
+  assert.equal(await raw(lib.send), V.kM2pHex);       // the same bytes as the checked-in vectors, whatever the role
+  assert.equal(await raw(lib.recv), V.kP2mHex);
+  assert.equal(await raw(libPhone.send), V.kP2mHex);
+  assert.equal(await raw(libPhone.recv), V.kM2pHex);
   assert.equal(secret.length, 32);
   // 4. fingerprint
   assert.equal((await fingerprint(b64uDecode(V.mkx.spkiB64u), b64uDecode(V.msigSpkiB64u))).b64u, V.fingerprintB64u);
@@ -324,4 +330,35 @@ test("L6: open() with expected { vault, from, to } rejects mismatches with the s
 test("jcs: sparse arrays are refused", () => {
   assert.throws(() => jcs([1, , 3]), /sparse/);
   assert.equal(jcs([1, null, 3]), "[1,null,3]");
+});
+
+// ---- L6: direction-bound message keys
+test("L6: machine { send: K_m2p, recv: K_p2m } and phone the reverse; usages enforce the direction", async () => {
+  const m = await generateKeyAgreementKeyPair(), p = await generateKeyAgreementKeyPair();
+  const secret = Uint8Array.from({ length: 32 }, (_, i) => i + 1);
+  const rm = await deriveRoot({ privateKey: m.privateKey, peerPublicKey: p.publicKey, pairingId: "pr_xxxxxxxx", secret });
+  const rp = await deriveRoot({ privateKey: p.privateKey, peerPublicKey: m.publicKey, pairingId: "pr_xxxxxxxx", secret });
+  const km = await deriveMessageKeys(rm, { vault: ids.vault, deviceId: ids.phone, role: "machine" });
+  const kp = await deriveMessageKeys(rp, { vault: ids.vault, deviceId: ids.phone, role: "phone" });
+  assert.deepEqual(Object.keys(km).sort(), ["recv", "send"]);
+  assert.deepEqual(km.send.usages, ["encrypt"]);
+  assert.deepEqual(km.recv.usages, ["decrypt"]);
+  assert.deepEqual(kp.send.usages, ["encrypt"]);
+  assert.deepEqual(kp.recv.usages, ["decrypt"]);
+  // machine -> phone and phone -> machine, both ways
+  const down = await seal(fieldsM2P(), innerManifest(), km.send);
+  assert.equal((await open(down, kp.recv)).t, "manifest");
+  const up = await seal({ type: "action", vault: ids.vault, from: ids.phone, to: ids.machine }, { t: "action", seq: 1, actionId: "9d3e2c1b-7a6f-4e5d-8c4b-3a2f1e0d9c8b", createdAt: 1793779260000 }, kp.send);
+  assert.equal((await open(up, km.recv)).t, "action");
+  // a receive key cannot encrypt, a send key cannot decrypt
+  await rejects(seal(fieldsM2P(), innerManifest(), km.recv), "bad_key");
+  await rejects(seal(fieldsM2P(), innerManifest(), kp.recv), "bad_key");
+  await rejects(open(down, km.send), "bad_key");
+  await rejects(open(up, kp.send), "bad_key");
+  // WebCrypto itself refuses too, not only our check
+  await assert.rejects(subtle.encrypt({ name: "AES-GCM", iv: new Uint8Array(12) }, km.recv, new Uint8Array(1)));
+  await assert.rejects(subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(12) }, km.send, new Uint8Array(32)));
+  // the role is required
+  await assert.rejects(deriveMessageKeys(rm, { vault: ids.vault, deviceId: ids.phone }), TypeError);
+  await assert.rejects(deriveMessageKeys(rm, { vault: ids.vault, deviceId: ids.phone, role: "relay" }), TypeError);
 });

@@ -22,7 +22,10 @@ const phone = "dev_cGhvbmVQaXhlbDgwMDAx";
 
 const shared = new Uint8Array(await subtle.deriveBits({ name: "ECDH", public: pkx.publicKey }, mkx.privateKey, 256));
 const root = await deriveRoot({ privateKey: mkx.privateKey, peerPublicKey: pkx.publicKey, pairingId, secret });
-const keys = await deriveMessageKeys(root, { vault, deviceId: phone, epoch: 0, extractable: true });
+// L6: the machine side sends m2p and receives p2m; the phone side is the reverse. Same key bytes either way.
+const mach = await deriveMessageKeys(root, { vault, deviceId: phone, role: "machine", epoch: 0, extractable: true });
+const ph = await deriveMessageKeys(root, { vault, deviceId: phone, role: "phone", epoch: 0, extractable: true });
+const keys = { m2p: mach.send, p2m: ph.send };
 const rawKey = async (k) => new Uint8Array(await subtle.exportKey("raw", k));
 const mkxSpki = await exportPublicKey(mkx.publicKey);
 const msigSpki = new Uint8Array(await subtle.exportKey("spki", msig.publicKey));

@@ -18,19 +18,30 @@ const BIDI = /[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/g;                 
 // Needs Node 20+ (the /v flag and \p{RGI_Emoji}); package.json engines already says >=20. The RGI list is the one in the
 // runtime's ICU: an emoji newer than that loses its joiners (fails safe).
 // Cost: one pass for the test, and the segmenter only when something is there to strip, so it is linear.
-const HIDDEN = /[\p{Cf}\p{Default_Ignorable_Code_Point}\p{Co}\u2800\u115F\u1160\u3164\uFFA0]/gu;
-const HAS_HIDDEN = /[\p{Cf}\p{Default_Ignorable_Code_Point}\p{Co}\u2800\u115F\u1160\u3164\uFFA0]/u;
+// U+FFFC (object replacement character) is drawn with no width in Chrome (E2), so it goes too.
+const HIDDEN = /[\p{Cf}\p{Default_Ignorable_Code_Point}\p{Co}\u2800\u115F\u1160\u3164\uFFA0\uFFFC]/gu;
+const HAS_HIDDEN = /[\p{Cf}\p{Default_Ignorable_Code_Point}\p{Co}\u2800\u115F\u1160\u3164\uFFA0\uFFFC]/u;
+const NON_ASCII = /[^\u0000-\u007F]/;
 const RGI = /^\p{RGI_Emoji}$/v;
 const SEG = new Intl.Segmenter("en", { granularity: "grapheme" });
+// E3: VS16 (U+FE0F) after a text-default emoji is optional to the eye (95 emoji draw the same with or without it), so it could
+// carry one bit per emoji. One written form only: a lone code point X whose X+FE0F is an RGI emoji is always written X+FE0F,
+// and a VS16 that is not part of an RGI emoji is stripped as before.
+const canon = (g) => {
+  if (g.length > 2 || [...g].length !== 1) return g;   // a lone code point (BMP or astral)
+  return RGI.test(g + "️") ? g + "️" : g;
+};
 export function stripHidden(s, { keepEmoji = true } = {}) {
   let t = s;
-  if (HAS_HIDDEN.test(t)) {
-    if (!keepEmoji) t = t.replace(HIDDEN, "");
-    else {
-      let out = "";
-      for (const { segment: g } of SEG.segment(t)) out += HAS_HIDDEN.test(g) && !RGI.test(g) ? g.replace(HIDDEN, "") : g;
-      t = out;
+  if (!keepEmoji) {
+    if (HAS_HIDDEN.test(t)) t = t.replace(HIDDEN, "");
+  } else if (NON_ASCII.test(t)) {
+    let out = "";
+    for (const { segment: g } of SEG.segment(t)) {
+      if (!HAS_HIDDEN.test(g)) out += canon(g);
+      else out += RGI.test(g) ? g : canon(g.replace(HIDDEN, ""));
     }
+    t = out;
   }
   return t.replace(BIDI, "");
 }
@@ -71,12 +82,16 @@ export function escapeLine(l) {
 // NOT processed: "\&ZeroWidthSpace;" would still decode to a hidden character in the link text. So the ";" that ends an
 // entity-like "&name;" or "&#123;" is escaped too ("\&name\;"): no entity can form there, and the text stays visible.
 const ESC_CORE = (t) => t.replace(/(?<!\\)(\\*)([<\[\]&])/g, "$1$1\\$2").replace(/\\&([#A-Za-z0-9]+);/g, "\\&$1\\;");
+// E1: in a URL word that "\;" trick misses names with "_" (marked keeps any "&\w+;", and HTML then prefix-matches a legacy
+// entity such as "&shy_x;"). So in a URL word "&" is written as the entity "&amp;" (it shows as "&" in the link text and in
+// plain text), whatever follows it. [ and ] are escaped as before, and "<" becomes "&lt;" (below).
+const ESC_URL = (t) => t.replace(/(?<!\\)(\\*)([\[\]])/g, "$1$1\\$2").replace(/&/g, "&amp;");
 // The same rule bites on "<": marked's autolink takes everything up to the next "<" or space, so in "http://x\\<!-- c -->" the
 // backslash is swallowed by the URL and the "<" after it is live (a comment or tag can then hide text). In a word that contains a
 // URL start, "<" is written as the entity "&lt;" instead: it shows as "<" in the link text and in plain text alike, and in the file
 // it is plain, visible text. The other pieces of such a word get the normal escapes.
 const URLISH = /(?:https?:\/\/|ftp:\/\/|www\.)/i;
-export const escapeLt = (t) => t.replace(/\S+/g, (w) => (w.includes("<") && URLISH.test(w) ? w.split("<").map(ESC_CORE).join("&lt;") : ESC_CORE(w)));
+export const escapeLt = (t) => t.replace(/\S+/g, (w) => (URLISH.test(w) ? w.split("<").map(ESC_URL).join("&lt;") : ESC_CORE(w)));
 export const escapeTitle = (t) => escapeLt(t.replace(/[|#]/g, "\\$&"));
 
 // answer and problem. -> { lines } or { error: "too_long" | "bad_request" }

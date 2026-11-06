@@ -87,7 +87,7 @@ export const wr = (L, rel, text) => { fs.writeFileSync(path.join(L.eleven, rel),
 export const hashOf = (L, rel) => H(fs.readFileSync(path.join(L.eleven, rel)));
 export const qHash = (q) => H(q.normalize("NFC").trim().replace(/\s+/g, " "));
 
-export const device = (over = {}) => ({ id: "dev_phone1", name: "Pixel 8", mode: "act", ...over });
+export const device = (over = {}) => ({ id: "dev_phone1", name: "Pixel 8", mode: "write", ...over });
 
 // the whole tree: path -> text
 export function snapshot(root) {
