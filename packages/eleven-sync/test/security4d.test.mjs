@@ -54,7 +54,7 @@ test("N2: entity-encoded invisible characters stay text (numeric and named)", ()
     assert.ok(out.includes("\\&"));
     assert.ok(!/&[#A-Za-z0-9]+;/.test(out), "no entity-shaped text is left: " + out);   // a bare URL would keep \& literal and still decode it
   }
-  assert.equal(escapeLt("http://e.example?&ZeroWidthSpace;x"), "http://e.example?\\&ZeroWidthSpace\\;x");
+  assert.equal(escapeLt("http://e.example?&ZeroWidthSpace;x"), "http://e.example?&amp;ZeroWidthSpace;x");   // in a URL word "&" is the entity &amp; (E1)
 });
 
 test("N1: escapeLt is linear on a long backslash run", () => {
@@ -94,7 +94,7 @@ test("N3: the smuggling cases from 04c are stripped, and the old survivors are g
   }
   assert.equal(cleanText(att["tags after text"]), "Markdown.");
   assert.equal(cleanText(att["ZWJ between letters"]), "Status");
-  assert.equal(cleanText(att["VS16 run"]), "\u2764");     // a heart with extra selectors is not one RGI emoji: every selector goes (text-style heart)
+  assert.equal(cleanText(att["VS16 run"]), "\u2764\ufe0f");     // a heart with extra selectors is not one RGI emoji: every selector goes, then the one canonical form is written (E3)
   assert.equal(cleanText(att["tags after a real flag"]), "\u{1F3F4}");   // flag + extra tags is not one RGI emoji: all tags go, the plain flag stays
 });
 

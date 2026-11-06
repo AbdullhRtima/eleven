@@ -91,8 +91,10 @@ export class ManifestTracker {
     return { files, dirs: s.dirs, skipped: s.skipped };
   }
   #save() { if (this.file) saveState(this.file, this.state); }
-  #setCurrent(hash, files, deltaCount) {
-    this.state.current = { hash, files, deltaCount };
+  // `chain` = the manifest that started this chain and the deltas since, so one phone can be brought up to date without
+  // restarting the chain for the others (a new manifest would change the hash every other phone's next delta points at)
+  #setCurrent(hash, files, deltaCount, chain) {
+    this.state.current = { hash, files, deltaCount, ...(chain ? { chain } : {}) };
     this.state.fids = Object.fromEntries(files.map((f) => [f.fid, f.path]));
     this.#save();
   }
@@ -100,8 +102,18 @@ export class ManifestTracker {
   manifest() {
     const { files, dirs } = this.scan();
     const m = makeManifest(files, dirs);
-    this.#setCurrent(m.hash, files, 0);
+    this.#setCurrent(m.hash, files, 0, { manifest: m, deltas: [] });
     return m;
+  }
+  // The current chain (the manifest it started with and every delta since) for ONE phone that lost track, or null when this state
+  // file predates the chain record or it does not verify: the caller then has to start a new chain for everybody.
+  chainFor() {
+    const c = this.state.current?.chain;
+    if (!c) return null;
+    try {
+      const v = verifyChain(c.manifest, c.deltas);
+      return v.ok && v.hash === this.state.current.hash ? { manifest: c.manifest, deltas: c.deltas } : null;
+    } catch { return null; }
   }
   // The next message to send: a manifest on start or every FULL_EVERY deltas, a delta on change, null if nothing changed.
   // mtime-only changes are ignored: an entry changes when its path, size or sha256 changes.
@@ -120,7 +132,7 @@ export class ManifestTracker {
     const remove = [...old.keys()].filter((fid) => !seen.has(fid)).sort();
     if (!upsert.length && !remove.length) return null;
     const d = makeDelta(cur.hash, upsert, remove);
-    this.#setCurrent(d.hash, merged, cur.deltaCount + 1);
+    this.#setCurrent(d.hash, merged, cur.deltaCount + 1, cur.chain ? { manifest: cur.chain.manifest, deltas: [...cur.chain.deltas, d] } : undefined);
     return { type: "delta", body: d };
   }
 }

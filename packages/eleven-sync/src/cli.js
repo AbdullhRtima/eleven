@@ -10,6 +10,10 @@ import { scan } from "./scan.js";
 import { ManifestTracker } from "./manifest.js";
 import { loadActionState } from "./astate.js";
 import { lstatOrNull } from "./fsafe.js";
+import { pair, DEFAULT_RELAY } from "./pair.js";
+import { startDaemon, StartError } from "./start.js";
+import { RelayError } from "./relay-client.js";
+import { unpairAll } from "./unpair.js";
 
 const VERSION = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../package.json"), "utf8")).version;
 const HELP = `eleven-sync ${VERSION}: machine-side sync for the eleven ledger
@@ -18,8 +22,12 @@ Usage:
   eleven-sync status [dir] [--state-dir <dir>]   show the items and the manifest summary
   eleven-sync reset-state [dir]                  move a bad actions-state.json aside and start clean (asks you to type "reset")
                                                  dir = the state folder (default ~/.config/eleven-sync)
-  eleven-sync pair                               not built yet
-  eleven-sync start                              not built yet
+  eleven-sync pair [dir] [--read-only] [--relay <url>] [--state-dir <dir>]
+                                                 pair a phone: shows a QR code, asks you to confirm [y/N]
+  eleven-sync start [dir] [--state-dir <dir>]    run the sync daemon for a paired project (Ctrl-C to stop)
+  eleven-sync unpair --all [dir] [--state-dir <dir>]
+                                                 delete this project's vault at the relay, then remove the local keys and state
+                                                 (asks you to type "unpair"; stop the daemon first)
   eleven-sync devices                            not built yet
   eleven-sync --help | --version
 `;
@@ -94,7 +102,7 @@ export async function resetState(stateDir, { out, err, stdin, now = () => new Da
   return 1;
 }
 
-export async function main(argv, { out = process.stdout, err = process.stderr, cwd = process.cwd(), stdin = process.stdin } = {}) {
+export async function main(argv, { out = process.stdout, err = process.stderr, cwd = process.cwd(), stdin = process.stdin, quietMs } = {}) {
   const args = [...argv];
   let stateDir = null;
   const si = args.indexOf("--state-dir");
@@ -102,7 +110,48 @@ export async function main(argv, { out = process.stdout, err = process.stderr, c
   const [cmd, ...rest] = args;
   if (!cmd || cmd === "--help" || cmd === "-h" || cmd === "help") { out.write(HELP); return 0; }
   if (cmd === "--version" || cmd === "-v") { out.write(VERSION + "\n"); return 0; }
-  if (["pair", "start", "devices"].includes(cmd)) { out.write(`eleven-sync ${cmd}: not built yet\n`); return 0; }
+  if (cmd === "pair") {
+    const ro = rest.indexOf("--read-only"); if (ro >= 0) rest.splice(ro, 1);
+    let relay = process.env.ELEVEN_RELAY_URL || DEFAULT_RELAY;
+    const ri = rest.indexOf("--relay");
+    if (ri >= 0) { relay = rest[ri + 1]; rest.splice(ri, 2); if (!relay) { err.write("--relay needs a URL\n"); return 2; } }
+    const bad = rest.find((a) => a.startsWith("-"));
+    if (bad || rest.length > 1) { err.write(`pair: unexpected argument ${bad ?? rest[1]}\n`); return 2; }
+    const ac = new AbortController();
+    const onInt = () => ac.abort();
+    process.once("SIGINT", onInt);
+    try { return await pair({ dir: rest[0] ?? ".", readOnly: ro >= 0, stateDir: stateDir ? path.resolve(cwd, stateDir) : undefined, relay, stdin, out, err, cwd, signal: ac.signal }); }
+    finally { process.off("SIGINT", onInt); }
+  }
+  if (cmd === "start") {
+    const bad = rest.find((a) => a.startsWith("-"));
+    if (bad || rest.length > 1) { err.write(`start: unexpected argument ${bad ?? rest[1]}\n`); return 2; }
+    // the handlers go in first, so a signal during start-up still ends in a clean stop
+    let signalled = false, wake;
+    const sig = new Promise((r) => { wake = r; });
+    const onSig = () => { signalled = true; wake(); };
+    process.once("SIGINT", onSig); process.once("SIGTERM", onSig);
+    try {
+      let h;
+      try { h = await startDaemon({ dir: rest[0] ?? ".", stateDir: stateDir ?? undefined, cwd, err }); }
+      catch (e) {
+        if (e instanceof StartError) { err.write(e.message + "\n"); return e.exit; }
+        // One clear line instead of a stack trace when the relay refuses us (e.g. the machine was unpaired or revoked).
+        if (e instanceof RelayError) { err.write(`eleven-sync: the relay refused this machine (${String(e.code).replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 40)}). If it was unpaired or revoked, run "eleven-sync pair" again.\n`); return 1; }
+        throw e;
+      }
+      const r = await Promise.race([h.done, sig]);
+      await h.stop();
+      return signalled || !r?.fatal ? 0 : 1;
+    } finally { process.off("SIGINT", onSig); process.off("SIGTERM", onSig); }
+  }
+  if (cmd === "unpair") {
+    const all = rest.indexOf("--all"); if (all >= 0) rest.splice(all, 1);
+    const bad = rest.find((a) => a.startsWith("-"));
+    if (all < 0 || bad || rest.length > 1) { err.write(all < 0 ? "unpair: only --all is built (it deletes the whole vault). Usage: eleven-sync unpair --all [dir]\n" : `unpair: unexpected argument ${bad ?? rest[1]}\n`); return 2; }
+    return unpairAll({ dir: rest[0] ?? ".", stateDir: stateDir ? path.resolve(cwd, stateDir) : undefined, cwd, stdin, out, err, ...(quietMs !== undefined ? { quietMs } : {}) });
+  }
+  if (["devices"].includes(cmd)) { out.write(`eleven-sync ${cmd}: not built yet\n`); return 0; }
   if (cmd === "reset-state") {
     const dir = path.resolve(cwd, stateDir ?? rest[0] ?? path.join(os.homedir(), ".config", "eleven-sync"));
     return resetState(dir, { out, err, stdin });

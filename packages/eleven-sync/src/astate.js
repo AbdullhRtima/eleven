@@ -4,7 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { ensurePrivateDir, readPrivate, writePrivateAtomic, lstatOrNull, O_NOFOLLOW } from "./fsafe.js";
+import { ensurePrivateDir, readPrivate, writePrivateAtomic, lstatOrNull, O_NOFOLLOW, O_NONBLOCK } from "./fsafe.js";
 import { stripHidden } from "./text.js";
 
 export const DAY = 86400000;
@@ -18,7 +18,9 @@ export const LOG_FILES = 3;              // actions.log, actions.log.1, actions.
 
 export const markKey = (deviceId, actionId) => `${deviceId}|${actionId}`;
 
-const empty = () => ({ v: 1, seen: {}, cancelled: {}, rate: {} });
+// N7: every map is keyed by something the phone influences, so none of them has a prototype ("__proto__" is then just a key).
+const dict = (o = {}) => Object.assign(Object.create(null), o);
+const empty = () => ({ v: 1, seen: dict(), cancelled: dict(), rate: dict() });
 const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 
 function valid(s) {
@@ -58,6 +60,7 @@ export function loadActionState(stateDir, now) {
     } catch { /* the original is still there */ }
     return { file, s: null, unavailable: true };
   }
+  s.seen = dict(s.seen); s.cancelled = dict(s.cancelled); s.rate = dict(s.rate);
   prune(s.seen, now); prune(s.cancelled, now);
   for (const [d, r] of Object.entries(s.rate)) {
     const a = Array.isArray(r.a) ? r.a : [], n = Array.isArray(r.n) ? r.n : [], e = Array.isArray(r.e) ? r.e : [];
@@ -87,10 +90,19 @@ export function appendLog(stateDir, { now, device, kind, item, actionId, hash, r
   ensurePrivateDir(stateDir);
   const file = path.join(stateDir, "actions.log");
   const line = [new Date(now).toISOString(), device, kind, item ?? "-", actionId, hash, result].map(clean).join("\t") + "\n";
+  // E5: a FIFO, socket or device at actions.log must never make us wait. lstat first; the open is O_NONBLOCK and fstat-checked
+  // too, in case the file is swapped after the lstat. Anything but a regular file: skip the log line with a warning.
+  const skip = (why) => process.stderr.write(`eleven-sync: not writing actions.log (${why}); the action is not affected\n`);
   const st = lstatOrNull(file);
-  if (st && st.isFile() && st.size + line.length > LOG_MAX_BYTES) rotate(file);
-  const fd = fs.openSync(file, fs.constants.O_WRONLY | fs.constants.O_APPEND | fs.constants.O_CREAT | O_NOFOLLOW, 0o600);
-  try { fs.fchmodSync(fd, 0o600); fs.writeSync(fd, line); } finally { fs.closeSync(fd); }
+  if (st && !st.isFile()) return skip("not a regular file");
+  if (st && st.size + line.length > LOG_MAX_BYTES) rotate(file);
+  let fd;
+  try { fd = fs.openSync(file, fs.constants.O_WRONLY | fs.constants.O_APPEND | fs.constants.O_CREAT | O_NOFOLLOW | O_NONBLOCK, 0o600); }
+  catch (e) { return skip(e.code ?? "open failed"); }
+  try {
+    if (!fs.fstatSync(fd).isFile()) return skip("not a regular file");
+    fs.fchmodSync(fd, 0o600); fs.writeSync(fd, line);
+  } finally { fs.closeSync(fd); }
 }
 
 export function readLog(stateDir, last = 20) {

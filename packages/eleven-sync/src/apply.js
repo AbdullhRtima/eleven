@@ -12,6 +12,7 @@ import { parseTasks, itemModel, openQuestions, cells, strip, statusKind, isUserR
 import { H, jcs } from "./manifest.js";
 import { cleanText, prepBlock, prepTitle, escapeTitle, slugify, deviceLabel, localDate } from "./text.js";
 import { tokens, checkSplice } from "./structure.js";
+import { readPrivate } from "./fsafe.js";
 import { loadActionState, saveActionState, appendLog, markKey, EXPIRE_MS, FUTURE_MS, RATE, DAY } from "./astate.js";
 
 export const KINDS = ["answer", "approve", "accept", "new_item", "cancel"];
@@ -396,8 +397,13 @@ function serial(key, fn) {
 // The action_result status the phone sees (8.6): written -> ok, refused -> rejected.
 export const toWire = (r) => (r.status === "written" ? { status: "ok" } : r.status === "refused" ? { status: "rejected", reason: r.reason } : { status: r.status, ...(r.reason ? { reason: r.reason } : {}) });
 
+// N7: a device id is a short token. Anything else is refused before the state is even opened. "__proto__", "constructor" and
+// "prototype" fit the pattern, so every per-device map is also a null-prototype object (astate.js).
+export const DEVICE_ID = /^[A-Za-z0-9_-]{1,64}$/;
+
 export function applyAction(action, opts) {
   if (!opts?.elevenDir || !opts?.stateDir || !isObj(opts.device) || typeof opts.device.id !== "string") throw new TypeError("applyAction needs elevenDir, stateDir and device { id, name }");
+  if (!DEVICE_ID.test(opts.device.id)) return Promise.resolve({ status: "refused", reason: "bad_device", actionId: null });
   return serial(path.resolve(opts.stateDir), () => run(action, opts));
 }
 
@@ -407,7 +413,14 @@ export async function applyBatch(items, opts) {
   const seq = (i) => (isObj(i.action) && Number.isSafeInteger(i.action.seq) ? i.action.seq : 0);
   const order = [...items].sort((a, b) => kind(a) - kind(b) || (kind(a) === 0 ? 0 : (a.device.id < b.device.id ? -1 : a.device.id > b.device.id ? 1 : 0) || seq(a) - seq(b)));
   const out = [];
-  for (const i of order) out.push(await applyAction(i.action, { ...opts, device: i.device }));
+  for (const i of order) {
+    if (typeof opts.before === "function") await opts.before(i);                // the daemon applies cancels that arrived live meanwhile (L-11)
+    let r;
+    try { r = await applyAction(i.action, { ...opts, device: i.device }); }
+    catch { r = { status: "refused", reason: "bad_request", actionId: null }; }   // one bad action must not stop the rest of the batch
+    out.push(r);
+    if (typeof opts.onResult === "function") await opts.onResult(i, r);          // the daemon sends each result here, before it acks
+  }
   return out;
 }
 
@@ -450,7 +463,7 @@ async function run(action, opts) {
   };
   const rej = (reason) => finish({ status: "refused", reason });
   // early refusals and cancels have their own small budget; past it the action is dropped and nothing is saved
-  const rr = (S.rate[device.id] ||= { a: [], n: [], e: [] });
+  const rr = Object.hasOwn(S.rate, device.id) ? S.rate[device.id] : (S.rate[device.id] = { a: [], n: [], e: [] });
   rr.e ||= [];
   const early = () => { if (rr.e.length >= RATE.earlyPerHour) return true; rr.e.push(t); return false; };
   const dropped = () => ({ status: "refused", reason: "rate_limited", actionId: id, kind });
@@ -465,8 +478,8 @@ async function run(action, opts) {
   if (!Number.isSafeInteger(action.createdAt)) return earlyDo(() => rej("bad_request"));
   if (t - action.createdAt > EXPIRE_MS) return earlyDo(() => finish({ status: "expired" }));
   if (action.createdAt - t > FUTURE_MS) return earlyDo(() => rej("clock"));
-  // step 4 (the signature was verified by the caller). Only mode "act" may write; anything else is read-only (L7)
-  if (device.mode !== "act") return earlyDo(() => rej("read_only"));
+  // step 4 (the signature was verified by the caller). Only mode "write" may write; anything else is read-only (L7)
+  if (device.mode !== "write") return earlyDo(() => rej("read_only"));
   if (kind === "?") return earlyDo(() => rej("bad_request"));
   // step 5
   if (kind === "cancel") {   // the user must always be able to stop something: cancel is not on the 20/hour budget
@@ -485,7 +498,7 @@ async function run(action, opts) {
     saveActionState(sfile, S);
   }
 
-  const fids = opts.fids ?? (() => { try { return JSON.parse(fs.readFileSync(path.join(opts.stateDir, "state.json"), "utf8")).fids ?? {}; } catch { return {}; } })();
+  const fids = opts.fids ?? (() => { try { return JSON.parse(readPrivate(path.join(opts.stateDir, "state.json"))?.toString("utf8") ?? "{}").fids ?? {}; } catch { return {}; } })();   // E5: the same safe reader as everywhere else
   const c = {
     base, dev, date: localDate(t), now, fids, hooks: opts.hooks ?? {},
     recheckMs: opts.recheckMs ?? 5000, sleep: opts.sleep ?? ((ms) => new Promise((ok) => setTimeout(ok, ms))),

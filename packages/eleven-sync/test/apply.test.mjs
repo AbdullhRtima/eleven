@@ -400,7 +400,7 @@ test("slug: only [a-z0-9-], at most 40 characters, never a path", async () => {
   const bad = ["../x", "..\\x", "/etc/passwd", "C:\\Windows", "a/b", "a\u0000b", "\u202Eevil", ".", "..", "con", "\u2024\u2024/x", "\uFF0E\uFF0E/\uFF0E\uFF0E", "x".repeat(300)];
   const L = ledger(), before = snapshot(L.eleven);
   for (const t of bad) {
-    const r = await run(L, h.newItem(t), { device: h.device({ id: "dev_" + Math.random() }) });
+    const r = await run(L, h.newItem(t), { device: h.device({ id: "dev_" + Math.random().toString(36).slice(2) }) });
     if (r.status === "written") assert.match(r.item, /^\d{3}-[a-z0-9-]{1,40}$/, t); else if (r.status !== "stale") assert.match(r.reason, /bad_request|too_long/, t);   // stale: that slug already exists (8.3)
   }
   const names = fs.readdirSync(path.join(L.eleven, "work"));
