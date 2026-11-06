@@ -58,17 +58,45 @@ function readSynced(base, rel) {
   } catch { return null; }
 }
 
-// ---- 8.2: the per-action signature. -> null when good, else the rejection reason
-export function checkActionSignature(action, device, vault) {
-  const sig = action.sig;
-  if (!isObj(sig) || typeof sig.alg !== "string") return "bad_signature";
-  const registered = device.phoneActKey?.alg === "webauthn-es256" ? "webauthn-es256" : "device-es256";
-  if (registered === "webauthn-es256" && sig.alg === "device-es256") return "weak_signature";   // never weaker than what was registered
-  if (sig.alg !== "device-es256") return "bad_signature";                                      // TODO(passkey): webauthn-es256 is not verified yet, so it is refused
+// ---- 8.2, passkey: `challenge` is toSign (the phone passes the raw digest to credentials.get; the browser writes it b64u into clientDataJSON).
+// The signature is ASN.1 DER over authenticatorData || SHA-256(clientDataJSON). No attestation: the key is whatever pairing registered.
+const WA_RP = "m.eleven.rtima.org", WA_ORIGIN = `https://${WA_RP}`;
+const WA_RPID_HASH = crypto.createHash("sha256").update(WA_RP).digest();
+const WA_MAX = { authenticatorData: 64, clientDataJSON: 5462, signature: 96 };   // b64u chars; they cap the decoded size: authenticatorData 37 bytes (+slack), clientDataJSON 4096 bytes, DER <= 72 bytes
+function checkWebauthn(sig, challenge, pub, info) {
+  const f = {};
+  for (const [k, max] of Object.entries(WA_MAX)) {
+    if (typeof sig[k] !== "string" || sig[k].length > max) return "bad_signature";
+    f[k] = Buffer.from(b64uDecode(sig[k]));                                         // strict: no padding, no other alphabet, canonical
+  }
+  const ad = f.authenticatorData, cd = f.clientDataJSON;
+  if (ad.length !== 37) return "bad_signature";                                     // exactly rpIdHash, flags, counter: AT and ED (more bytes) are refused below
+  if (!ad.subarray(0, 32).equals(WA_RPID_HASH)) return "bad_signature";
+  if ((ad[32] & 0x05) !== 0x05 || (ad[32] & 0xc0)) return "bad_signature";         // UP and UV set; no attested credential data (AT) or extensions (ED) on a get
+  const c = JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(cd));
+  if (!isObj(c) || c.type !== "webauthn.get" || c.challenge !== challenge || c.origin !== WA_ORIGIN) return "bad_signature";
+  if (c.crossOrigin !== undefined && c.crossOrigin !== false) return "bad_signature";
+  if (c.topOrigin !== undefined && c.topOrigin !== WA_ORIGIN) return "bad_signature";
+  if (pub.asymmetricKeyType !== "ec" || pub.asymmetricKeyDetails?.namedCurve !== "prime256v1") return "bad_signature";
+  const msg = Buffer.concat([ad, crypto.createHash("sha256").update(cd).digest()]);
+  if (!crypto.verify("sha256", msg, { key: pub, dsaEncoding: "der" }, f.signature)) return "bad_signature";
+  info.counter = ad.readUInt32BE(33);                                               // recorded by the caller, never required to rise (synced passkeys report 0)
+  return null;
+}
+
+// ---- 8.2: the per-action signature. -> null when good, else the rejection reason. `info` (optional) gets `counter` for a good passkey assertion.
+export function checkActionSignature(action, device, vault, info = {}) {
   try {
+    if (!isObj(action)) return "bad_signature";                                                // null, or a throwing sig getter, must not escape
+    const sig = action.sig;
+    if (!isObj(sig) || typeof sig.alg !== "string") return "bad_signature";
+    const registered = device.phoneActKey?.alg === "webauthn-es256" ? "webauthn-es256" : "device-es256";
+    if (registered === "webauthn-es256" && sig.alg === "device-es256") return "weak_signature";   // never weaker than what was registered
+    if (sig.alg !== registered) return "bad_signature";                                          // nor swapped: a software key's webauthn-shaped flags would be self-asserted (8.2: upgrade = re-pair)
     const { sig: _drop, ...rest } = action;
     const toSign = b64uEncode(crypto.createHash("sha256").update(`eleven/v1/action|${vault}|${device.deviceId}|${jcs(rest)}`).digest());
     const pub = crypto.createPublicKey({ key: Buffer.from(device.phoneActKey?.pub ?? "", "base64url"), format: "der", type: "spki" });
+    if (registered === "webauthn-es256") return checkWebauthn(sig, toSign, pub, info);
     const raw = Buffer.from(typeof sig.signature === "string" ? sig.signature : "", "base64url");
     if (raw.length !== 64) return "bad_signature";
     return crypto.verify("sha256", Buffer.from(toSign), { key: pub, dsaEncoding: "ieee-p1363" }, raw) ? null : "bad_signature";
@@ -329,8 +357,9 @@ export async function startDaemon(opts = {}) {
     const asDevice = (d) => ({ id: d.deviceId, name: d.name, mode: d.mode });
     function signatureProblem(d, a) {                                              // 8.5 step 4: mode first (applyAction refuses read_only), then the signature
       if (d.mode !== "write") return null;
-      const why = checkActionSignature(a, d, record.vault);
+      const info = {}, why = checkActionSignature(a, d, record.vault, info);
       if (why) log(`action from "${d.name}" rejected: ${why}`);
+      else if (info.counter !== undefined) log(`action from "${d.name}": passkey counter ${info.counter}`);   // 8.2: recorded here only, not required to rise
       return why;
     }
     async function answerAction(d, a, r, ev) {

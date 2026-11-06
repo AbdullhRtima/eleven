@@ -13,7 +13,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { PassThrough, Writable } from "node:stream";
 import { startFakeRelay } from "./fake-relay.mjs";
-import { claimLink, Phone, canon } from "./phone-sim.mjs";
+import { claimLink, Phone, canon, webauthnSig, actionToSign } from "./phone-sim.mjs";
 import { pair, vaultFile } from "../src/pair.js";
 import { startDaemon, StartError, acquireLock, daemonPaths, checkActionSignature, MAX_SYNC_BYTES } from "../src/start.js";
 import { encryptWebPush, parsePushKeys, buildPushJson } from "../src/webpush.js";
@@ -183,7 +183,7 @@ test("signatures: a bad, missing, wrong-algorithm or passkey signature is reject
   const before = w.read("work/010-export/brief.md");
   const act = { kind: "answer", item: "010-export", target: "brief", pre: { qHash: qHash(QUESTION) }, payload: { answer: "Nope" } };
   const cases = [[phone, "bad", "bad_signature"], [phone, "none", "bad_signature"], [phone, "webauthn", "bad_signature"], [phone, { alg: "device-es256", signature: "AAAA" }, "bad_signature"],
-    [pk, "device", "weak_signature"], [pk, "webauthn", "bad_signature"]];
+    [phone, "passkey", "bad_signature"], [pk, "device", "weak_signature"], [pk, "webauthn", "bad_signature"]];   // a device-es256 phone cannot "upgrade" by sending a passkey assertion (8.2: re-pair)
   for (const [p, sig, reason] of cases) {
     const { id } = p.action(act, { sig });
     const r = await result(p, id);
@@ -196,6 +196,29 @@ test("signatures: a bad, missing, wrong-algorithm or passkey signature is reject
   // and a good one still works
   const ok = phone.action(act);
   assert.equal((await result(phone, ok.id)).status, "ok");
+}));
+
+test("passkey (webauthn-es256): a real assertion is applied and its counter logged; edited, wrong-origin, wrong-vault and P1363 ones are rejected and write nothing", withWorld(async (w) => {
+  const pk = await w.pairPhone({ deviceName: "Passkey phone", actAlg: "webauthn-es256" });
+  const d = await w.start();
+  await pk.waitFor((m) => m.inner.t === "manifest");
+  const before = w.read("work/010-export/brief.md");
+  const act = { kind: "answer", item: "010-export", target: "brief", pre: { qHash: qHash(QUESTION) }, payload: { answer: "Passkey answer." } };
+  const wa = (o) => (toSign) => webauthnSig(pk.act.privateKey, toSign, o);
+  const bad = [wa({ origin: "https://evil.example" }), wa({ crossOrigin: true }), wa({ p1363: true }), wa({ flags: 0x01 }), wa({ rpId: "evil.example" }),
+    (toSign, a) => { const s = webauthnSig(pk.act.privateKey, toSign); a.payload = { answer: "Edited after signing." }; return s; },
+    (_t, a) => webauthnSig(pk.act.privateKey, actionToSign("vlt_CCCCCCCCCCCCCCCCCCCCCC", pk.deviceId, a))];
+  for (const sig of bad) {
+    const { id } = pk.action(act, { sig });
+    const r = await result(pk, id);
+    assert.deepEqual([r.status, r.reason], ["rejected", "bad_signature"], String(sig));
+  }
+  assert.equal(w.read("work/010-export/brief.md"), before);
+  const { id } = pk.action(act, { sig: (toSign) => webauthnSig(pk.act.privateKey, toSign, { counter: 7 }) });
+  assert.equal((await result(pk, id)).status, "ok");
+  assert.match(w.read("work/010-export/brief.md"), /\*\*Answer \(phone "Passkey phone", \d{4}-\d{2}-\d{2}\):\*\* Passkey answer\./);
+  assert.match(d.err.text(), /action from "Passkey phone": passkey counter 7/);
+  await until(() => queueOf(w, "action").length === 0);
 }));
 
 test("an action replayed after a restart is not applied twice; seq keeps rising; the position is persisted 0600", withWorld(async (w) => {

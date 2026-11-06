@@ -109,6 +109,22 @@ export function canon(v) {                       // RFC 8785 for the plain value
 }
 const padTo = (n) => (n < 65536 ? Math.max(1024, Math.ceil(n / 1024) * 1024) : Math.ceil(n / 65536) * 65536);
 const H = (x) => b64u(crypto.createHash("sha256").update(x).digest());
+export const actionToSign = (vault, deviceId, a) => H("eleven/v1/action|" + vault + "|" + deviceId + "|" + canon(a));   // 8.2: b64u of the digest; the WebAuthn challenge is the RAW digest
+
+/**
+ * A passkey assertion as navigator.credentials.get returns it (WebAuthn 7.2), built by hand: authenticatorData = rpIdHash(32) | flags(1) |
+ * counter(4, BE); clientDataJSON; signature = DER ECDSA over authenticatorData || SHA-256(clientDataJSON). `o` changes one thing at a time:
+ * rpId, flags, counter, type, challenge, origin, crossOrigin, extra (more clientData keys), clientData (the exact text), tweakAd(buf) -> buf
+ * (before signing), key (signer), p1363 (wrong signature encoding), tweakSig(buf) -> buf (after signing), fields (replace sig fields as they are sent).
+ */
+export function webauthnSig(key, toSign, o = {}) {
+  const sha = (x) => crypto.createHash("sha256").update(x).digest(), pick = (k, dflt) => (k in o ? o[k] : dflt);   // so null is a value too
+  const counter = Buffer.alloc(4); counter.writeUInt32BE(o.counter ?? 0);
+  const ad = (o.tweakAd ?? ((x) => x))(Buffer.concat([sha(o.rpId ?? "m.eleven.rtima.org"), Buffer.from([o.flags ?? 0x1d]), counter]));   // 0x1d = UP | UV | BE | BS
+  const cd = Buffer.from(o.clientData ?? JSON.stringify({ type: pick("type", "webauthn.get"), challenge: pick("challenge", toSign), origin: pick("origin", "https://m.eleven.rtima.org"), crossOrigin: pick("crossOrigin", false), ...o.extra }));
+  const raw = crypto.sign("sha256", Buffer.concat([ad, sha(cd)]), { key: o.key ?? key, dsaEncoding: o.p1363 ? "ieee-p1363" : "der" });
+  return { alg: "webauthn-es256", authenticatorData: b64u(ad), clientDataJSON: b64u(cd), signature: b64u((o.tweakSig ?? ((x) => x))(raw)), ...o.fields };
+}
 
 export function aesSeal(key, env, inner) {
   const aad = Buffer.from(["eleven/v1", env.v, env.type, env.vault, env.from, env.to, env.id, env.epoch, env.fid ?? ""].join("|"));
@@ -193,13 +209,16 @@ export class Phone {
     return sealed;
   }
   req(t, body = {}) { return this.send("req", { t, ...body }); }
-  /** A signed action (8.1, 8.2). sig: "device" (default) | "none" | "bad" (signed by another key) | "webauthn" | an object. */
+  /** A signed action (8.1, 8.2). sig: "device" (default) | "none" | "bad" (signed by another key) | "webauthn" (dummy values) | "passkey" (a real
+   *  assertion by this phone's key) | (toSign, action) => sig object (may edit the action after signing) | an object. */
   action(fields, { sig = "device", id = crypto.randomUUID(), createdAt = Date.now() } = {}) {
     const a = { t: "action", seq: ++this.seq, ts: Date.now(), actionId: id, createdAt, ...fields };
-    const toSign = H("eleven/v1/action|" + this.vault + "|" + this.deviceId + "|" + canon(a));
+    const toSign = actionToSign(this.vault, this.deviceId, a);
     const key = sig === "bad" ? crypto.generateKeyPairSync("ec", { namedCurve: "prime256v1" }).privateKey : this.act?.privateKey;
     if (sig === "device" || sig === "bad") a.sig = { alg: "device-es256", signature: b64u(crypto.sign("sha256", Buffer.from(toSign), { key, dsaEncoding: "ieee-p1363" })) };
     else if (sig === "webauthn") a.sig = { alg: "webauthn-es256", authenticatorData: "AA", clientDataJSON: "AA", signature: "AA" };
+    else if (sig === "passkey") a.sig = webauthnSig(key, toSign);
+    else if (typeof sig === "function") a.sig = sig(toSign, a);
     else if (typeof sig === "object") a.sig = sig;
     return { id, env: this.send("action", a) };
   }
