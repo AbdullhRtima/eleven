@@ -52,6 +52,9 @@ test("happy path: both sides show the same 4 words and derive the same keys, the
   assert.equal(fin.ok, true);
   assert.equal(fin.accept.deviceId, phone.deviceId);
   const rec = record(w);
+  assert.match(fin.accept.machineDeviceId, /^dev_[\w-]{22}$/, "the sealed accept names the machine's device");
+  assert.equal(fin.accept.machineDeviceId, rec.deviceId, "... and it is the machine's own id");
+  assert.deepEqual(Object.keys(fin.accept), ["machineKxPub", "machineSigPub", "vault", "deviceId", "machineLabel", "mode", "machineDeviceId"], "key order is part of the wire bytes");
   assert.equal(rec.devices.length, 1);
   const d = rec.devices[0];
   assert.deepEqual([d.deviceId, d.name, d.mode, d.accountId], [phone.deviceId, "Pixel 8", "write", "acc_alice"]);
@@ -60,6 +63,17 @@ test("happy path: both sides show the same 4 words and derive the same keys, the
   assert.notEqual(d.keys.send, d.keys.recv);
   assert.equal(rec.account, "acc_alice");
   assert.equal(w.fake.pairingState(phone.pairingId), "accepted");
+}));
+
+test("the phone refuses an accept whose machineDeviceId is not the machine the relay lists", withWorld(async (w) => {
+  const p = w.run();
+  const phone = await claimLink({ relayUrl: w.fake.url, link: await p.link(), token: w.token });
+  await until(() => /\[y\/N\]/.test(p.out.text()));
+  p.stdin.write("y\n");
+  assert.equal(await p.done, 0);
+  const bad = await phone.finish({ relayMachineId: "dev_" + "x".repeat(22) });
+  assert.deepEqual([bad.ok, bad.error], [false, "machine_device_mismatch"]);
+  assert.equal((await phone.finish()).ok, true, "the relay's real list agrees with the sealed id");
 }));
 
 for (const [name, answer] of [["N", "n\n"], ["Enter", "\n"], ["anything else", "maybe\n"]]) {

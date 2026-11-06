@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { encodeQr, qrToText } from "../src/qr.js";
-import { WORDS } from "../src/wordlist.js";
+import { WORDS } from "../../eleven-protocol/src/wordlist.js";
 
 // Reference matrices from an independent encoder (Nayuki's qrcodegen, via qrcode.react 3.1.0): byte mode, ECC M, no ECC boost.
 const vectors = JSON.parse(fs.readFileSync(new URL("./qr-vectors.json", import.meta.url), "utf8"));
