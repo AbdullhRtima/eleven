@@ -36,6 +36,9 @@ function safeRel(rel) {
   return rel;
 }
 function lstatOrNull(p) { try { return fs.lstatSync(p); } catch (e) { if (e.code === "ENOENT" || e.code === "ENOTDIR") return null; throw e; } }
+// W1: on Windows (seen with Node 22.14, build 26300) stat and lstat report dev 0 while fstat reports the volume serial number.
+// A dev of 0 is "unknown", not a different volume; the file id must still match.
+const sameFile = (a, b) => a.ino === b.ino && (a.dev === b.dev || a.dev === 0 || b.dev === 0);
 
 // Step 7: lstat every component below eleven/, no symlinks, realpath inside eleven/work. null when it does not exist.
 function resolveInside(base, rel, want) {
@@ -64,7 +67,7 @@ function readFileChecked(abs) {
   try {
     const st = fs.fstatSync(fd);
     const l = lstatOrNull(abs);
-    if (!st.isFile() || !l || l.isSymbolicLink() || l.ino !== st.ino || l.dev !== st.dev) refuse("bad_path");
+    if (!st.isFile() || !l || l.isSymbolicLink() || !sameFile(l, st)) refuse("bad_path");
     if (st.size > MAX_BYTES) refuse("bad_target");
     const bytes = fs.readFileSync(fd);
     return { bytes, st };
