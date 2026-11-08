@@ -376,6 +376,21 @@ test("a fid whose path is a symlink is refused (bad_path) and the link target is
   assert.equal(fs.readdirSync(out4).length, 2);
 });
 
+// W1: Windows reports dev 0 from stat/lstat and the volume serial from fstat. Simulated here so it is tested on every OS.
+test("fix W1: a path stat with dev 0 (Windows) is not taken for a swapped file; a different file id still is", async () => {
+  const lstat = fs.lstatSync;
+  try {
+    fs.lstatSync = (p, ...a) => { const s = lstat(p, ...a); if (s) s.dev = 0; return s; };
+    const L = ledger();
+    assert.equal((await run(L, h.newItem("Dark mode"))).status, "written");
+    assert.equal(await status(L, h.answerBrief(L)), "written");
+    // a file swapped in at the same path is still refused
+    fs.lstatSync = (p, ...a) => { const s = lstat(p, ...a); if (s?.isFile()) s.ino += 1; return s; };
+    const L2 = ledger();
+    assert.equal(await status(L2, h.answerBrief(L2)), "refused:bad_path");
+  } finally { fs.lstatSync = lstat; }
+});
+
 test("a table entry that tries to leave the ledger is refused", async () => {
   const L = ledger();
   const evil = { [fid(L, BRIEF)]: "../../outside.md", ["B".repeat(22)]: "work/010-export/../../project.md" };
