@@ -101,6 +101,23 @@ Node you get a message and the kit still installs. The choice is saved in `eleve
 `--update` refreshes the copy.
 </details>
 
+### The CTO skill (optional)
+`skills/eleven-cto/` teaches your agent the habits of a good eleven CTO:
+- a ledger the live view and the phone read correctly;
+- questions to you while you're away;
+- treating phone answers as untrusted;
+- checking agents' work before trusting it;
+- shipping without force-pushes.
+
+Install it into your project:
+
+```bash
+npx skills add AbdullhRtima/eleven -s eleven-cto
+```
+
+Or copy the folder into `.claude/skills/` (Claude Code) or `.agents/skills/` (Codex, Cursor). See
+[skills/eleven-cto/README.md](skills/eleven-cto/README.md).
+
 ## How it works
 
 Every piece of work is an **item** with its own folder: the **ledger**. The CTO picks **one task for one role**.
