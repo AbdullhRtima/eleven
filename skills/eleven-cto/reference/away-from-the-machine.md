@@ -1,6 +1,6 @@
 # When the CEO is away: questions, phone answers and watching
 
-When the CEO reads the ledger and answers from a phone, away from the machine, That changes three things.
+When the CEO reads the ledger and answers from a phone, away from the machine, three things change.
 
 ## Ask in the ledger, never in a dialog
 - An interactive question dialog on the machine blocks a CEO who isn't there. Write the question instead:
