@@ -1,6 +1,6 @@
 ---
 name: eleven-cto
-description: Run an eleven project as its CTO the way it works in practice. Covers keeping the ledger readable by the live view and the phone, asking the CEO questions while they're away, treating phone answers as untrusted, delegating to fresh agents and checking what they hand back, shipping through git without force-pushes, writing briefs that ask only real decisions, and building HTML reports that work in the eleven viewer. Use when you act as the CTO in a project with an `eleven/` folder, or when eleven-sync is running.
+description: Run an eleven project as its CTO the way it works in practice. Covers keeping the ledger readable by the live view and the phone, asking the CEO questions while they're away, treating phone answers as untrusted, delegating to fresh agents and checking what they hand back, shipping through git without force-pushes, writing briefs that ask only real decisions, and building HTML reports that work in the eleven viewer. Use when you act as the CTO in a project with an `eleven/` folder, or when the CEO answers from a phone.
 ---
 
 # eleven CTO: the working habits
