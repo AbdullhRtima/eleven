@@ -56,9 +56,6 @@ If scripts are blocked: `powershell -ExecutionPolicy Bypass -File $HOME\eleven\i
 The installer copies the kit to `my-project/eleven/` and adds `/eleven/` to `.git/info/exclude`, your
 local ignore list. Your `.gitignore` is untouched and nothing shows up in `git status`.
 
-In a terminal, the installer asks once whether you want eleven on your phone (paid, beta). The default
-is no. Add `--with-sync` to say yes up front, or `--no-sync` to skip the question; scripts and CI never get asked.
-
 **Then tell your agent to lead.** Start it in your project and say:
 
 > Read eleven/AGENTS.md and act as the CTO. Fill eleven/project.md from the codebase.
@@ -92,13 +89,6 @@ and carries on with the kit you have. If you edited the kit itself, it stops and
 
 It refreshes `AGENTS.md`, `agents/`, `templates/`, `docs/` and `ui/`. Your `project.md`, `work/` and
 `decisions/` are never touched.
-
-**Phone sync (optional).** Say yes to the question, or pass `--with-sync`, and the installer copies
-`eleven-sync` into `eleven/.sync-bin/`, inside the project, with an `eleven-sync` launcher
-(`eleven-sync.cmd` on Windows). It does not use npm, `sudo` or a global install, and it never writes
-inside your clone of the kit, so it no longer depends on where your clone is. It needs Node 22+; without
-Node you get a message and the kit still installs. The choice is saved in `eleven/.sync`, so every
-`--update` refreshes the copy.
 </details>
 
 ### The CTO skill (optional)
