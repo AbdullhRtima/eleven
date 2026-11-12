@@ -65,6 +65,28 @@ jobs:
           # try <args...>: run the installer, keep the output in $out and the exit code in $rc, never abort.
           try() { set +e; out="$(run "$@" 2>&1)"; rc=$?; set -e; echo "$out"; }
           fail() { echo "FAIL: $*" >&2; exit 1; }
+          # eleven-sync lives in a private repo that public CI cannot read. Build a fixture git repo with the same
+          # layout (packages/{eleven-sync,eleven-protocol,ledger-core}) and a stub CLI that prints a version.
+          # $1 = the version the stub prints. Commits on branch main; sets the env the installers read.
+          make_fixture() {
+            local f="$RUNNER_TEMP/fixture"
+            rm -rf "$f"; mkdir -p "$f/packages/eleven-sync/bin" "$f/packages/eleven-sync/test" "$f/packages/eleven-protocol" "$f/packages/ledger-core"
+            printf 'console.log("%s");\n' "$1" > "$f/packages/eleven-sync/bin/eleven-sync.js"
+            echo "// stub test, must not be installed" > "$f/packages/eleven-sync/test/stub.test.js"
+            : > "$f/packages/eleven-protocol/.gitkeep"; : > "$f/packages/ledger-core/.gitkeep"
+            git -C "$f" init -q -b main
+            git -C "$f" add -A
+            git -C "$f" -c user.name=ci -c user.email=ci@example.com commit -q -m "fixture $1"
+            export ELEVEN_PACKAGES_URL="$(native "$f")"
+            export ELEVEN_PACKAGES_REF=main
+            export ELEVEN_PACKAGES_CACHE="$(native "$RUNNER_TEMP/pkgcache")"
+            rm -rf "$RUNNER_TEMP/pkgcache"
+          }
+          bump_fixture() {
+            local f="$RUNNER_TEMP/fixture"
+            printf 'console.log("%s");\n' "$1" > "$f/packages/eleven-sync/bin/eleven-sync.js"
+            git -C "$f" -c user.name=ci -c user.email=ci@example.com commit -q -am "fixture $1"
+          }
           new_project() { local d="$RUNNER_TEMP/$1"; rm -rf "$d"; mkdir -p "$d"; git -C "$d" init -q; echo "$d"; }
           HELPERS
 
@@ -153,21 +175,22 @@ jobs:
           if grep -q "Use eleven on your phone" <<<"$out"; then fail "a non-interactive run asked the question"; fi
           [ ! -e "$p/eleven/.sync" ] || fail "a non-interactive run created .sync"
 
-      - name: --with-sync installs eleven-sync, and update keeps it
+      - name: --with-sync installs eleven-sync from the fixture repo, and update refreshes it
         run: |
           source "$RUNNER_TEMP/h.sh"
           node --version
+          make_fixture 1.0.0
           p="$(new_project withsync)"
           try --with-sync "$p"; [ "$rc" -eq 0 ] || fail "exit $rc"
           [ "$(cat "$p/eleven/.sync")" = "sync=1" ] || fail "eleven/.sync is not sync=1"
           bin="$p/eleven/.sync-bin"
           if [ "$RUNNER_OS" = Windows ] && [ "$INSTALLER" != sh ]; then launcher="$bin/eleven-sync.cmd"; else launcher="$bin/eleven-sync"; fi
           [ -f "$launcher" ] || fail "launcher missing: $launcher"
-          for f in eleven-sync/bin/eleven-sync.js ledger-core/index.js eleven-protocol/src/index.js; do
-            [ -f "$bin/packages/$f" ] || fail "missing packages/$f"
-          done
+          [ -f "$bin/packages/eleven-sync/bin/eleven-sync.js" ] || fail "missing packages/eleven-sync/bin/eleven-sync.js"
+          for d in eleven-protocol ledger-core; do [ -d "$bin/packages/$d" ] || fail "missing packages/$d"; done
           [ ! -e "$bin/packages/eleven-sync/test" ] || fail "tests were copied"
           [ ! -e "$bin/node_modules" ] || fail "npm was used"
+          [ ! -e "$p/eleven/packages" ] || fail "packages/ was copied into eleven/"
           [ -z "$(git -C "$p" status --porcelain)" ] || fail ".sync files show up in git status"
           run_launcher() {
             if [ "$launcher" = "$bin/eleven-sync.cmd" ]; then MSYS_NO_PATHCONV=1 cmd.exe /d /c "$(cygpath -w "$launcher")" "$@"; else "$launcher" "$@"; fi
@@ -175,15 +198,39 @@ jobs:
           ver="$(run_launcher --version)" || fail "the launcher failed on --version"
           echo "launcher: $ver"
           grep -qE '^[0-9]+\.[0-9]+\.[0-9]+' <<<"$ver" || fail "unexpected --version output: $ver"
+          [ "$(tr -d '\r' <<<"$ver")" = "1.0.0" ] || fail "expected 1.0.0, got $ver"
+          # A new commit in the packages repo reaches the project on --update, not on a plain re-run.
+          bump_fixture 1.1.0
           try "$p" --update; [ "$rc" -eq 0 ] || fail "update exit $rc"
           grep -q "Installing eleven-sync" <<<"$out" || fail "--update did not refresh eleven-sync"
           [ -e "$p/eleven/.sync" ] || fail "--update removed .sync"
           [ -f "$launcher" ] || fail "--update lost the launcher"
           ver="$(run_launcher --version)" || fail "the launcher failed after --update"
+          [ "$(tr -d '\r' <<<"$ver")" = "1.1.0" ] || fail "--update did not fetch the new version, got $ver"
+
+      - name: No access to the packages repo - the kit installs, plain steps, exit 0
+        run: |
+          source "$RUNNER_TEMP/h.sh"
+          make_fixture 1.0.0
+          export ELEVEN_PACKAGES_URL="$(native "$RUNNER_TEMP/does-not-exist.git")"
+          p="$(new_project noaccess)"
+          try --with-sync "$p"
+          [ "$rc" -eq 0 ] || fail "exit $rc (a failed eleven-sync fetch must not fail the kit install)"
+          grep -q "eleven-sync is in a private repo" <<<"$out" || fail "no private-repo message"
+          grep -q "github.com/AbdullhRtima/eleven-packages" <<<"$out" || fail "message does not name the repo"
+          grep -q "gh auth login" <<<"$out" || fail "message does not say how to sign in"
+          [ -f "$p/eleven/AGENTS.md" ] || fail "kit was not installed"
+          [ ! -e "$p/eleven/.sync" ] || fail ".sync was written although eleven-sync was not installed"
+          [ ! -e "$p/eleven/.sync-bin" ] || fail ".sync-bin exists although the fetch failed"
+          # Same on --update of a project that asked for eleven-sync earlier.
+          echo "sync=1" > "$p/eleven/.sync"
+          try "$p" --update; [ "$rc" -eq 0 ] || fail "update exit $rc"
+          grep -q "eleven-sync is in a private repo" <<<"$out" || fail "no message on --update"
 
       - name: The kit is untouched by --with-sync
         run: |
           source "$RUNNER_TEMP/h.sh"
+          make_fixture 1.0.0
           p="$(new_project kitclean)"
           try --with-sync "$p"; [ "$rc" -eq 0 ] || fail "exit $rc"
           st="$(git -C "$KIT" status --porcelain --untracked-files=no)"

@@ -2,13 +2,19 @@
 # Install eleven into a project as ./eleven, hidden from git via .git/info/exclude.
 #   ./install.sh [project_dir]            install; never overwrites existing files
 #   ./install.sh --update [project_dir]   git pull the kit, then refresh AGENTS.md, agents/, templates/, docs/, ui/
-#   ./install.sh --with-sync              also install eleven-sync (phone app, paid beta; needs Node 22+), no question asked
+#   ./install.sh --with-sync              also install eleven-sync (phone app, free beta, invite only; needs Node 22+ and git), no question asked
 #   ./install.sh --no-sync                never install eleven-sync and never ask
 # Flags can go before or after project_dir. The project's own files (project.md, work/, decisions/)
 # are never overwritten.
 # eleven-sync is installed project-local into eleven/.sync-bin: its source is copied there (no npm, no
 # sudo, no global install, nothing written inside the kit) with an eleven-sync launcher, and the choice
 # is saved in eleven/.sync, so --update keeps it updated.
+# The eleven-sync source is not in this kit. It lives in the private repo AbdullhRtima/eleven-packages and is
+# fetched with your own GitHub access into a cache clone (~/.cache/eleven/eleven-packages; --update refreshes it).
+#   ELEVEN_PACKAGES_URL    repo URL (default https://github.com/AbdullhRtima/eleven-packages.git; for SSH use
+#                          git@github.com:AbdullhRtima/eleven-packages.git)
+#   ELEVEN_PACKAGES_REF    branch or tag (default main)
+#   ELEVEN_PACKAGES_CACHE  cache folder (default ~/.cache/eleven/eleven-packages)
 set -euo pipefail
 
 # Everything lives in main() so bash has read the whole script before `git pull` can replace this file.
@@ -19,7 +25,7 @@ main() {
       --update) update=1 ;;
       --with-sync) with_sync=1 ;;
       --no-sync) no_sync=1 ;;
-      -h|--help) sed -n '2,11p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; return 0 ;;
+      -h|--help) sed -n '2,18p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; return 0 ;;
       -*) echo "Unknown option: $arg (try --update, --with-sync, --no-sync)" >&2; return 1 ;;
       *)
         if (( have_project )); then echo "Only one project directory, got: $project_arg and $arg" >&2; return 1; fi
@@ -91,7 +97,7 @@ main() {
     want_sync=1
   elif (( ! update )) && [[ -t 0 && -t 1 ]]; then
     local answer=""
-    read -r -p "Use eleven on your phone (paid, beta)? This installs eleven-sync and needs Node 22+. [y/N] " answer || true
+    read -r -p "Use eleven on your phone (free beta, invite only)? This installs eleven-sync and needs Node 22+. [y/N] " answer || true
     [[ "$answer" =~ ^[Yy] ]] && want_sync=1
   fi
   if (( want_sync )); then install_sync "$kit" "$dest"; fi
@@ -105,7 +111,7 @@ main() {
 
 # Install eleven-sync into eleven/.sync-bin. A problem here never fails the kit install.
 install_sync() {
-  local kit="$1" dest="$2" node_major
+  local dest="$2" node_major
   if ! command -v node >/dev/null 2>&1; then
     echo "eleven-sync needs Node 22 or newer, and Node was not found." >&2
     echo "Get it from https://nodejs.org, then run the installer again with --with-sync." >&2
@@ -117,11 +123,8 @@ install_sync() {
     echo "Get a newer Node from https://nodejs.org, then run the installer again with --with-sync." >&2
     return 0
   fi
-  if [[ ! -d "$kit/packages/eleven-sync" ]]; then
-    echo "eleven-sync is not in this kit ($kit/packages/eleven-sync is missing)." >&2
-    echo "Run the installer from a full clone of the kit to use --with-sync." >&2
-    return 0
-  fi
+  local src
+  if ! src="$(fetch_packages)"; then return 0; fi
   echo "Installing eleven-sync into $dest/.sync-bin (project-local, no sudo, no npm)"
   local bin="$dest/.sync-bin" pkg entry
   rm -rf "${bin:?}"
@@ -131,15 +134,10 @@ install_sync() {
   fi
   # Source only (no tests, no node_modules); the relative layout stays, so the packages' relative imports work.
   for pkg in eleven-sync ledger-core eleven-protocol; do
-    if [[ ! -d "$kit/packages/$pkg" ]]; then
-      echo "eleven-sync did not install: $kit/packages/$pkg is missing. Use a full clone of the kit." >&2
-      rm -rf "${bin:?}"
-      return 0
-    fi
     mkdir -p "$bin/packages/$pkg"
-    for entry in "$kit/packages/$pkg"/* "$kit/packages/$pkg"/.[!.]*; do
+    for entry in "$src/$pkg"/* "$src/$pkg"/.[!.]*; do
       [[ -e "$entry" ]] || continue
-      case "$(basename "$entry")" in test|node_modules) continue ;; esac
+      case "$(basename "$entry")" in test|node_modules|.git) continue ;; esac
       cp -R "$entry" "$bin/packages/$pkg/"
     done
   done
@@ -152,7 +150,62 @@ LAUNCHER
   chmod 755 "$bin/eleven-sync"
   echo "sync=1" > "$dest/.sync"
   echo "eleven-sync installed: $bin/eleven-sync"
-  echo "The phone app is in private beta: it works once your email is on the beta list."
+  echo "The phone app is a free beta, invite only: it works once your email is on the beta list."
+}
+
+# Print the folder that holds the three packages (a cache clone of the private eleven-packages repo) on stdout.
+# On any problem: print plain steps on stderr, print nothing, return 1. Messages never go to stdout.
+fetch_packages() {
+  local url="${ELEVEN_PACKAGES_URL:-https://github.com/AbdullhRtima/eleven-packages.git}"
+  local ref="${ELEVEN_PACKAGES_REF:-main}"
+  local cache="${ELEVEN_PACKAGES_CACHE:-$HOME/.cache/eleven/eleven-packages}"
+  local out pkg
+  if ! command -v git >/dev/null 2>&1; then
+    echo "eleven-sync needs git to fetch it, and git was not found." >&2
+    echo "Install git, then run this again with --with-sync." >&2
+    sync_access_help >&2; return 1
+  fi
+  # Never hang on a credential prompt when nobody is at a terminal.
+  if [[ ! -t 0 ]]; then export GIT_TERMINAL_PROMPT=0; fi
+  if [[ -d "$cache/.git" ]]; then
+    # Always refresh, so a new project never gets an old copy; offline falls back to the cached copy.
+    if :; then
+      echo "Updating eleven-sync from $url ($ref)" >&2
+      if out="$(git -C "$cache" remote set-url origin "$url" 2>&1 \
+          && git -C "$cache" fetch --quiet --depth 1 origin "$ref" 2>&1 \
+          && git -C "$cache" reset --quiet --hard FETCH_HEAD 2>&1)"; then
+        :
+      else
+        echo "Could not update eleven-sync: $out" >&2
+        echo "Using the copy already downloaded in $cache." >&2
+      fi
+    fi
+  else
+    echo "Fetching eleven-sync from $url ($ref)" >&2
+    mkdir -p "$(dirname "$cache")" 2>/dev/null || true
+    local tmp="$cache.tmp.$$"
+    rm -rf "$tmp"
+    if ! out="$(git clone --quiet --depth 1 --branch "$ref" "$url" "$tmp" 2>&1)"; then
+      rm -rf "$tmp"
+      echo "$out" | head -n 5 | sed 's/^/  /' >&2
+      sync_access_help >&2; return 1
+    fi
+    rm -rf "$cache"
+    mv "$tmp" "$cache"
+  fi
+  for pkg in eleven-sync ledger-core eleven-protocol; do
+    if [[ ! -d "$cache/packages/$pkg" ]]; then
+      echo "eleven-sync did not install: packages/$pkg is missing in $cache (wrong ELEVEN_PACKAGES_REF?)." >&2
+      return 1
+    fi
+  done
+  echo "$cache/packages"
+}
+
+sync_access_help() {
+  echo "eleven-sync is in a private repo. Ask the owner for access to github.com/AbdullhRtima/eleven-packages,"
+  echo "then sign in to GitHub (for example gh auth login) and run this again with --with-sync."
+  echo "The kit itself is installed."
 }
 
 main "$@"

@@ -56,7 +56,7 @@ If scripts are blocked: `powershell -ExecutionPolicy Bypass -File $HOME\eleven\i
 The installer copies the kit to `my-project/eleven/` and adds `/eleven/` to `.git/info/exclude`, your
 local ignore list. Your `.gitignore` is untouched and nothing shows up in `git status`.
 
-In a terminal, the installer asks once whether you want eleven on your phone (paid, beta). The default
+In a terminal, the installer asks once whether you want eleven on your phone (free beta, invite only). The default
 is no. Add `--with-sync` to say yes up front, or `--no-sync` to skip the question; scripts and CI never get asked.
 
 **Then tell your agent to lead.** Start it in your project and say:
@@ -93,12 +93,13 @@ and carries on with the kit you have. If you edited the kit itself, it stops and
 It refreshes `AGENTS.md`, `agents/`, `templates/`, `docs/` and `ui/`. Your `project.md`, `work/` and
 `decisions/` are never touched.
 
-**Phone sync (optional).** Say yes to the question, or pass `--with-sync`, and the installer copies
-`eleven-sync` into `eleven/.sync-bin/`, inside the project, with an `eleven-sync` launcher
-(`eleven-sync.cmd` on Windows). It does not use npm, `sudo` or a global install, and it never writes
-inside your clone of the kit, so it no longer depends on where your clone is. It needs Node 22+; without
-Node you get a message and the kit still installs. The choice is saved in `eleven/.sync`, so every
-`--update` refreshes the copy.
+**Phone sync (optional, invite only).** Say yes to the question, or pass `--with-sync`. `eleven-sync` is not in
+this repo: it lives in a private repo (`AbdullhRtima/eleven-packages`) for invited testers. The installer
+fetches it with your own GitHub access (sign in first, for example `gh auth login`) and copies it into
+`eleven/.sync-bin/`, inside the project, with an `eleven-sync` launcher (`eleven-sync.cmd` on Windows). It needs
+git and Node 22+. Without access, git or Node you get plain steps and the kit still installs. No npm, `sudo` or
+global install. The choice is saved in `eleven/.sync`, so every `--update` refreshes the copy. CI and SSH users can set
+`ELEVEN_PACKAGES_URL` and `ELEVEN_PACKAGES_REF`.
 </details>
 
 ## How it works
