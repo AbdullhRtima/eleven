@@ -10,8 +10,8 @@ eleven viewer.
 ## Before you install it
 - **eleven installed in your project.** See the repo's [Quick start](../../README.md#quick-start). The skill reads
   `eleven/AGENTS.md`, the item ledgers under `eleven/work/`, and the live view in `eleven/ui/`.
-- **Optional: eleven-sync,** if you want to answer from your phone. The skill's notes on phone answers and on watching
-  for submissions apply only when it runs.
+- **Optional: answering from your phone.** The skill's notes on phone answers and on watching for submissions apply
+  only when you do.
 
 ## Install
 Choose one of the three ways.
@@ -54,7 +54,7 @@ Read eleven/AGENTS.md and act as the CTO.
 ```
 The skill loads when the agent acts as eleven's CTO. To load it explicitly, name it: "use the eleven-cto skill".
 
-To work from your phone, start eleven-sync as its own docs describe. Tell the agent you're away and that it should
+To work from your phone, set up your phone access first. Tell the agent you're away and that it should
 keep watching the ledger. It will then put its questions in each item's `brief.md`, and re-arm its watch as it goes.
 
 ## Update
