@@ -707,6 +707,24 @@ function snapshotSource(fileList) {
   return { kind: "snapshot", name, async scan() { return { files, dirs, ledger }; } };
 }
 
+// Local helper (ui/serve.mjs) served this page: read the ledger from it over HTTP. Live updates without a folder picker.
+function localSource(name) {
+  const get = async (u) => { const r = await fetch(u, { cache: "no-store" }); if (!r.ok) throw new Error(`${u}: HTTP ${r.status}`); return r; };
+  const at = (p) => "/__eleven/file?p=" + encodeURIComponent(p);
+  return {
+    kind: "local", name,
+    async scan() {
+      const s = await (await get("/__eleven/scan")).json();
+      const files = new Map();
+      for (const { p, mtime } of s.files) {
+        if (filterRel(p)) files.set(p, { mtime, read: async () => (await get(at(p))).text(), blob: async () => (await get(at(p))).blob() });
+      }
+      return { files, dirs: new Set(s.dirs), ledger: !!s.ledger };
+    },
+  };
+}
+const localName = () => document.querySelector('meta[name="eleven-local"]')?.content ?? null;
+
 // TEST HOOK (harness only): window.__ELEVEN_TEST_FILES__ = { "work/001-x/brief.md": { text, mtime }, ... }
 // defined before this script runs replaces the folder picker. Re-read on every poll so a test can change it.
 function testSource() {
@@ -809,15 +827,25 @@ function startSource(src) {
 async function openFolder() {
   closeMenus();
   if (!("showDirectoryPicker" in window)) return $("#dirInput").click();
+  const asked = performance.now();
   try {
     const picked = await window.showDirectoryPicker({ id: "eleven", mode: "read" });
     const { root, name } = await fsaRoot(picked);
     const rec = { h: root, name };
     S.saved = rec;
     startSource(fsaSource(root, name, rec));
-  } catch (e) { if (e && e.name !== "AbortError") console.error(e); }
+  } catch (e) {
+    // Cancelling a picker takes a person a moment. A picker that fails at once was never shown: some browser
+    // profiles refuse it silently (site data blocked, a broken update). Say so and offer the snapshot route.
+    if (e && e.name === "AbortError" && performance.now() - asked > 600) return;
+    console.error(e);
+    toast("The browser didn't open its folder picker. For live updates run: node eleven/ui/serve.mjs. Or use “Open a snapshot instead”: it reads the folder once.");
+    try { $("#dirInput").click(); } catch {}   // works where the click still counts; the link below always does
+    $("#cSnap")?.focus();
+  }
 }
 async function reconnect() {
+  if (S.source && S.source.kind === "local") { $("#bar").innerHTML = ""; return refresh(); }   // the helper may be back
   const rec = S.saved;
   if (!rec) return openFolder();
   try {
@@ -1390,11 +1418,12 @@ function renderConnect() {
     <h1>See what your AI team is doing.</h1>
     <p>Open the eleven folder in your project. Only that folder is read.</p>
     <div class="stack">${saved ? `<button class="btn primary" id="cReconnect">Reconnect to ${esc(saved.name)}</button><button class="linkbtn" id="cOpen">Open another eleven folder</button>`
-      : `<button class="btn primary" id="cOpen">Open the eleven folder</button>`}</div>
+      : `<button class="btn primary" id="cOpen">Open the eleven folder</button>`}${fsa ? `<button class="linkbtn" id="cSnap">Folder picker not opening? Open a snapshot instead</button>` : ""}</div>
     <p class="small muted">Files stay on this computer. Nothing is uploaded.</p>
     ${fsa ? "" : `<p class="small muted">This browser can't watch folders, so you get a snapshot. Use Chrome or Edge for live updates.</p>`}</div>`;
   $("#cOpen").onclick = openFolder;
   if ($("#cReconnect")) $("#cReconnect").onclick = reconnect;
+  if ($("#cSnap")) $("#cSnap").onclick = () => $("#dirInput").click();
 }
 function renderNoLedger() {
   $("#tree").innerHTML = ""; S.treeHtml = "";
@@ -1879,6 +1908,8 @@ try { S.openDirs = new Set(JSON.parse(store.get("eleven-open") || "[]")); } catc
   if (window.__ELEVEN_TEST_FILES__) {
     startSource(testSource());
     await new Promise((r) => setTimeout(r, 0));
+  } else if (localName() !== null) {
+    startSource(localSource(localName()));
   } else if ("showDirectoryPicker" in window) {
     let rec = await loadHandle();
     if (rec && !rec.h) {   // old format: a bare handle that may be the whole project (M3). Keep only its eleven/ part.
