@@ -1,29 +1,20 @@
 # Install eleven into a project as .\eleven, hidden from git via .git\info\exclude.
 #   .\install.ps1 [project_dir]            install; never overwrites existing files
 #   .\install.ps1 -Update [project_dir]    git pull the kit, then refresh AGENTS.md, agents\, templates\, docs\, ui\
-#   .\install.ps1 -WithSync                also install eleven-sync (phone app, paid beta; needs Node 22+), no question asked
-#   .\install.ps1 -NoSync                  never install eleven-sync and never ask
-# GNU-style flags work too (--update, --with-sync, --no-sync), before or after project_dir.
+# GNU-style flags work too (--update), before or after project_dir.
 # The project's own files (project.md, work\, decisions\) are never overwritten.
-# eleven-sync is installed project-local into eleven\.sync-bin: its source is copied there (no npm, no
-# admin, no global install, nothing written inside the kit) with an eleven-sync.cmd launcher, and the
-# choice is saved in eleven\.sync, so -Update keeps it updated.
 # If scripts are blocked: powershell -ExecutionPolicy Bypass -File install.ps1 <project_dir>
 #
 # Flags are read from $args by hand: a param block would not accept "--update" (PowerShell takes it as a path).
 # Works on Windows PowerShell 5.1 and PowerShell 7.
 $ErrorActionPreference = "Stop"
-# Windows PowerShell 5.1 has no $IsWindows; it only runs on Windows.
-$onWindows = ($PSVersionTable.PSEdition -eq "Desktop") -or $IsWindows
 
-$Update = $false; $WithSync = $false; $NoSync = $false; $Project = $null
+$Update = $false; $Project = $null
 foreach ($a in $args) {
   $s = [string]$a
   switch -Regex ($s) {
     '^--?update$'    { $Update = $true; break }
-    '^--?with-?sync$' { $WithSync = $true; break }
-    '^--?no-?sync$'  { $NoSync = $true; break }
-    '^-'             { [Console]::Error.WriteLine("Unknown option: $s (try -Update, -WithSync, -NoSync)"); exit 1 }
+    '^-'             { [Console]::Error.WriteLine("Unknown option: $s (try -Update)"); exit 1 }
     default {
       if ($null -ne $Project) { [Console]::Error.WriteLine("Only one project directory, got: $Project and $s"); exit 1 }
       $Project = $s
@@ -31,7 +22,6 @@ foreach ($a in $args) {
   }
 }
 if ($null -eq $Project) { $Project = "." }
-if ($WithSync -and $NoSync) { [Console]::Error.WriteLine("Use either -WithSync or -NoSync, not both."); exit 1 }
 
 function Invoke-Native {
   # Run a program and capture its exit code and output in $script:nativeCode / $script:nativeOut.
@@ -131,84 +121,6 @@ if ($script:nativeCode -eq 0) {
 } else {
   Write-Host "Not a git repo; add /eleven/ to your ignore file yourself if you need to."
 }
-
-function Install-Sync {
-  # Install eleven-sync into eleven\.sync-bin. A problem here never fails the kit install.
-  Invoke-Native node --version
-  if ($script:nativeCode -ne 0) {
-    [Console]::Error.WriteLine("eleven-sync needs Node 22 or newer, and Node was not found.")
-    [Console]::Error.WriteLine("Get it from https://nodejs.org, then run the installer again with -WithSync.")
-    return
-  }
-  $nodeVersion = $script:nativeOut.Trim()
-  if ($nodeVersion -notmatch '^v(\d+)\.' -or [int]$Matches[1] -lt 22) {
-    [Console]::Error.WriteLine("eleven-sync needs Node 22 or newer; found $nodeVersion.")
-    [Console]::Error.WriteLine("Get a newer Node from https://nodejs.org, then run the installer again with -WithSync.")
-    return
-  }
-  $bin = Join-Path $dest ".sync-bin"
-  foreach ($name in "eleven-sync", "ledger-core", "eleven-protocol") {
-    if (-not (Test-Path -LiteralPath (Join-Path $kit "packages\$name") -PathType Container)) {
-      [Console]::Error.WriteLine("eleven-sync did not install: $kit\packages\$name is missing. Use a full clone of the kit.")
-      return
-    }
-  }
-  Write-Host "Installing eleven-sync into $bin (project-local, no admin, no npm)"
-  try {
-    # An older install used npm, which links into the kit with junctions. Drop the links themselves first,
-    # so the recursive delete below can never reach into the kit.
-    $modules = Join-Path $bin "node_modules"
-    if (Test-Path -LiteralPath $modules) {
-      Get-ChildItem -LiteralPath $modules -Force | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint } | ForEach-Object {
-        [IO.Directory]::Delete($_.FullName, $false)
-      }
-    }
-    if (Test-Path -LiteralPath $bin) { Remove-Item -LiteralPath $bin -Recurse -Force }
-    # Source only (no tests, no node_modules); the relative layout stays, so the packages' relative imports work.
-    foreach ($name in "eleven-sync", "ledger-core", "eleven-protocol") {
-      $target = Join-Path $bin "packages\$name"
-      New-Item -ItemType Directory -Force -Path $target | Out-Null
-      # $target exists, so each entry lands inside it (Copy-Item would nest a folder into an existing target).
-      Get-ChildItem -LiteralPath (Join-Path $kit "packages\$name") -Force |
-        Where-Object { $_.Name -ne "test" -and $_.Name -ne "node_modules" } |
-        ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $target -Recurse -Force }
-    }
-    # Launchers find their packages next to themselves, wherever the project is.
-    if ($onWindows) {
-      # ASCII, CRLF for cmd.
-      $cmd = "@echo off`r`nnode `"%~dp0packages\eleven-sync\bin\eleven-sync.js`" %*`r`n"
-      [IO.File]::WriteAllText((Join-Path $bin "eleven-sync.cmd"), $cmd, [Text.Encoding]::ASCII)
-      $ps1 = "`$dir = Split-Path -Parent `$MyInvocation.MyCommand.Path`r`n& node (Join-Path `$dir `"packages\eleven-sync\bin\eleven-sync.js`") @args`r`nexit `$LASTEXITCODE`r`n"
-      [IO.File]::WriteAllText((Join-Path $bin "eleven-sync.ps1"), $ps1, [Text.Encoding]::ASCII)
-      $launcher = Join-Path $bin "eleven-sync.cmd"
-    } else {
-      # pwsh on macOS/Linux: the same sh launcher install.sh writes. LF only.
-      $sh = "#!/bin/sh`ndir=`"`$(cd `"`$(dirname `"`$0`")`" && pwd)`"`nexec node `"`$dir/packages/eleven-sync/bin/eleven-sync.js`" `"`$@`"`n"
-      $launcher = Join-Path $bin "eleven-sync"
-      [IO.File]::WriteAllText($launcher, $sh, [Text.Encoding]::ASCII)
-      & chmod 755 $launcher
-    }
-    Set-Content -Path (Join-Path $dest ".sync") -Value "sync=1" -Encoding ASCII
-  } catch {
-    [Console]::Error.WriteLine("$_")
-    [Console]::Error.WriteLine("eleven-sync did not install. The kit itself is installed; retry with -WithSync.")
-    return
-  }
-  Write-Host "eleven-sync installed: $launcher"
-  Write-Host "The phone app is in private beta: it works once your email is on the beta list."
-}
-
-# eleven-sync (optional): wanted if asked for, already chosen earlier (eleven\.sync), or answered "y".
-$wantSync = $false
-if ($NoSync) {
-  $wantSync = $false
-} elseif ($WithSync -or (Test-Path -LiteralPath (Join-Path $dest ".sync"))) {
-  $wantSync = $true
-} elseif ((-not $Update) -and [Environment]::UserInteractive -and -not [Console]::IsInputRedirected -and -not [Console]::IsOutputRedirected) {
-  $answer = Read-Host "Use eleven on your phone (paid, beta)? This installs eleven-sync and needs Node 22+. [y/N]"
-  if ($answer -match '^[Yy]') { $wantSync = $true }
-}
-if ($wantSync) { Install-Sync }
 
 Write-Host "Installed eleven in $dest"
 Write-Host ""
