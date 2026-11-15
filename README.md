@@ -186,6 +186,20 @@ write it, refreshing every 2 seconds. Nothing is uploaded. Firefox and Safari op
 There's also a file tree with a reader for every ledger file; HTML mockups open in a sandboxed frame.
 The screenshots use a synthetic sample project.
 
+**Folder picker not working?** Some machines refuse the browser's folder access: the picker opens, you choose
+the folder, and nothing happens. Security software is a common cause. Run the UI locally instead, from your
+project folder (needs Node 18 or later):
+
+```bash
+node eleven/ui/serve.mjs
+```
+
+Then open **http://127.0.0.1:7411/** in any browser. You get the same live view without the folder picker.
+Keep the terminal open while you use it; Ctrl+C stops it. The helper only reads the files the UI shows
+(`project.md`, `work/`, `decisions/`), can't change anything, and only answers this computer. Use
+`--port 8080` to pick another port, or pass a path to read a different project:
+`node eleven/ui/serve.mjs ../other-project`.
+
 ## Why it works
 
 eleven's loop comes from *GVS5H* (Gao et al., [arXiv:2608.26480](https://arxiv.org/abs/2608.26480)): one
@@ -213,6 +227,7 @@ work/<NNN>-slug/  one folder per item: the shared ledger
 decisions/        decision records that outlive an item
 docs/             the habits and research behind it, the CTO role, the roadmap
 ui/index.html     the live browser UI
+ui/serve.mjs      serves the live UI locally when the browser's folder picker doesn't work
 install.sh        install / update (macOS, Linux)
 install.ps1       install / update (Windows)
 ```
